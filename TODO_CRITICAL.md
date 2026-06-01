@@ -85,7 +85,7 @@ in a 480×320 window) → TD-4 (Pi 3 + PiTFT deployment, one systemd service).
         else dimmed.
         Done: `render.dim_low_fuel(surface, on)` over `LOW_FUEL_RECT`
         (416,232)-(464,278); `render_frame` lights it when `seven_day_pct ≥ 80`.
-  - [ ] TD-3.7 Money + reset readouts: extra-use $, extra-limit $, balance $ (USD
+  - [x] TD-3.7 Money + reset readouts: extra-use $, extra-limit $, balance $ (USD
         from the snapshot; format `$X.XX`, clamp ≥999.99 defensively); 7-day reset
         date; 5-hour reset time (`fmt_hhmm`). USD only.
     - [x] TD-3.7.a Money readouts (extra-use / extra-limit / balance $). Each is a
@@ -100,9 +100,19 @@ in a 480×320 window) → TD-4 (Pi 3 + PiTFT deployment, one systemd service).
           two cent digits, with the "." overlaying that gap. `render_frame` shows
           the money row when healthy, the fault message when faulted. Tests in
           `tests/test_money.py`.
-    - [ ] TD-3.7.b Reset readouts: 7-day reset date + 5-hour reset time
-          (`fmt_hhmm`). Pending position/font spec from the art (the bottom strip
-          is now occupied by the money row — these land elsewhere on the cluster).
+    - [x] TD-3.7.b Reset readouts + static labels (top area, always drawn). 7-day
+          reset date `"YYYY  MM  DD"` (DSEG7 Modern Mini Bold Italic 20pt @ (11,30))
+          over the dim "8888  88  88" ghost, with the "7 Day Reset" label (Roboto
+          15pt @ (11,12)). 5-hour reset time `"HH:MM"` (same DSEG face @ (11,88))
+          over "88:88", label "5 Hour Reset" (@ (11,71)). Plus the fuel-gauge "7
+          Day" label (@ (422,36)) and two "-" separators (@ (77,39)/(77,118)).
+          `gauges.fmt_date` (pure, `time.gmtime`, two-space groups, None→blank) +
+          existing `fmt_hhmm`, both offset by `cfg.utc_offset_hours`.
+          `render.draw_dseg_string` anchors the ghost ink top-left at the position
+          and draws the same-structure live string at the shared origin (no
+          per-cell packing needed — date/time always have every digit). All in
+          `render.draw_resets`, called unconditionally in `render_frame`. Tests in
+          `tests/test_resets.py`.
   - [x] TD-3.8 Fault state machine reading the snapshot: map
         poll-failure / data-stale (`snapshot.stale`) / needs-auth
         (`snapshot.auth_failed`) → check-engine light + a distinct message each;

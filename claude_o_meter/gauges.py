@@ -14,6 +14,8 @@ burn-rate gauge behaves exactly as it did on the PyPortal:
     TACH_FRAMES     position count; tach_position() returns 0.0 .. TACH_FRAMES-1
 """
 
+import time
+
 REDLINE_FRAME = 17
 BLUE_EXPONENT = 0.5
 RED_FULL_RATIO = 2.0
@@ -30,6 +32,16 @@ def fmt_hhmm(unix_ts, utc_offset_hours=0):
     h = (local // 3600) % 24
     m = (local // 60) % 60
     return "{:02d}:{:02d}".format(h, m)
+
+
+def fmt_date(unix_ts, utc_offset_hours=0):
+    """7-day reset date as ``"YYYY  MM  DD"`` — two spaces between groups, to
+    match the DSEG "8888  88  88" ghost. ``None``/0 reads as blank (only the
+    ghost shows). Pure: ``time.gmtime`` is deterministic given its input."""
+    if not unix_ts:
+        return ""
+    t = time.gmtime(int(unix_ts) + utc_offset_hours * 3600)
+    return "%04d  %02d  %02d" % (t.tm_year, t.tm_mon, t.tm_mday)
 
 
 def fmt_duration(seconds):

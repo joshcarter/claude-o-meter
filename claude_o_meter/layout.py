@@ -105,6 +105,25 @@ MONEY_GROUPS = (
     ("Balance", (328, 289), "balance"),
 )
 
+# --- Reset readouts + static labels (always drawn, top area) ----------------
+# Absolute top-left (visible-ink) positions. The two DSEG fields are drawn over
+# a dim all-segments ghost (like the money value), but the date/time always have
+# every digit, so the live string shares the ghost's structure and registers on
+# it without per-cell packing. Labels/dashes are Roboto; fields are DSEG7 Modern
+# Mini Bold Italic 20pt. The "7 Day" by the fuel gauge labels that instrument.
+RESET_7D_LABEL_POS = (11, 12)     # "7 Day Reset"
+RESET_7D_DATE_POS = (11, 30)      # "YYYY  MM  DD" over "8888  88  88"
+RESET_5H_LABEL_POS = (11, 71)     # "5 Hour Reset"
+RESET_5H_TIME_POS = (11, 88)      # "HH:MM" over "88:88"
+DASH_1_POS = (77, 39)
+DASH_2_POS = (77, 118)
+FUEL_LABEL_POS = (422, 36)        # "7 Day" — labels the fuel gauge
+RESET_LABEL_PT = 15
+RESET_FIELD_PT = 20
+DASH_PT = 15
+DATE_GHOST = "8888  88  88"
+TIME_GHOST = "88:88"
+
 # --- Bottom status area -----------------------------------------------------
 # Shows the fault message when one is active, else the money readouts. Anchored
 # by the text's ink box so the measured corner is exact. The money layout

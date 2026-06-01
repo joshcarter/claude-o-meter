@@ -242,6 +242,47 @@ def draw_money(surface, snapshot, cfg):
         draw_money_group(surface, getattr(snapshot, field), label, group, cfg)
 
 
+def draw_dseg_string(surface, ghost_str, live_str, font, pos, cfg):
+    """Draw a fixed-structure DSEG readout: the dim all-segments ``ghost_str``
+    with ``live_str`` (same length/structure) bright over it. The ghost's ink
+    top-left is anchored at ``pos`` and the live string shares that origin, so
+    its digits register on the ghost. ``live_str`` empty → ghost only."""
+    ghost_color = _dim_color(layout.C_LIGHT, cfg.dim_opacity)
+    ghost = font.render(ghost_str, True, ghost_color)
+    ink = ghost.get_bounding_rect()
+    origin = (pos[0] - ink.x, pos[1] - ink.y)
+    surface.blit(ghost, origin)
+    if live_str:
+        surface.blit(font.render(live_str, True, layout.C_LIGHT), origin)
+
+
+def draw_resets(surface, snapshot, cfg):
+    """Static labels plus the 7-day reset date and 5-hour reset time readouts,
+    each a DSEG value over its dim ghost. Always drawn (top area, independent of
+    the fault state); when a timestamp is missing the live string is blank and
+    only the ghost shows."""
+    light = layout.C_LIGHT
+    f_label = get_font(layout.FONT_LABEL, layout.RESET_LABEL_PT)
+    f_field = get_font(layout.FONT_MONEY, layout.RESET_FIELD_PT)
+    f_dash = get_font(layout.FONT_LABEL, layout.DASH_PT)
+    off = cfg.utc_offset_hours
+
+    _draw_ink_topleft(surface, "7 Day Reset", f_label, light, layout.RESET_7D_LABEL_POS)
+    draw_dseg_string(surface, layout.DATE_GHOST,
+                     gauges.fmt_date(snapshot.seven_day_resets_at, off),
+                     f_field, layout.RESET_7D_DATE_POS, cfg)
+
+    _draw_ink_topleft(surface, "5 Hour Reset", f_label, light, layout.RESET_5H_LABEL_POS)
+    five = snapshot.five_hour_resets_at
+    draw_dseg_string(surface, layout.TIME_GHOST,
+                     gauges.fmt_hhmm(five, off) if five else "",
+                     f_field, layout.RESET_5H_TIME_POS, cfg)
+
+    _draw_ink_topleft(surface, "-", f_dash, light, layout.DASH_1_POS)
+    _draw_ink_topleft(surface, "-", f_dash, light, layout.DASH_2_POS)
+    _draw_ink_topleft(surface, "7 Day", f_label, light, layout.FUEL_LABEL_POS)
+
+
 def _dim_color(color, opacity):
     """Colour as if a black rectangle at ``opacity`` were blitted over it —
     i.e. brightness scaled by (255 - opacity)/255. Lets the DSEG "88" ghost be
@@ -286,6 +327,9 @@ def render_frame(surface, snapshot, cfg):
     low_fuel_on = (snapshot.seven_day_pct or 0.0) >= 80.0
     dim_low_fuel(surface, low_fuel_on, opacity)
 
+    # Reset date/time readouts + static labels (top area, always drawn). (TD-3.7.b)
+    draw_resets(surface, snapshot, cfg)
+
     # Check-engine light + bottom message share one fault signal. (TD-3.8)
     fault_msg = faults.fault_message(snapshot)
     dim_check_engine(surface, fault_msg is not None, opacity)
@@ -302,6 +346,6 @@ def render_frame(surface, snapshot, cfg):
 __all__ = [
     "render_frame", "dim_rect", "dim_tach", "dim_fuel",
     "dim_check_engine", "dim_low_fuel", "draw_tach_number", "draw_bottom",
-    "draw_money", "draw_money_group", "draw_text", "get_font",
-    "reset_caches", "pygame",
+    "draw_money", "draw_money_group", "draw_resets", "draw_dseg_string",
+    "draw_text", "get_font", "reset_caches", "pygame",
 ]

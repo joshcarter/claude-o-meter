@@ -12,6 +12,7 @@ Close the window or press Esc/Q to quit early.
 """
 
 import sys
+import time
 
 import pygame
 
@@ -79,7 +80,10 @@ def main(delay_ms=10):
         # Bottom status area: the full snapshot pipeline, cycling fault messages
         # (healthy → no message; stale; never-polled; needs-auth).
         for snap in [
-            Snapshot(last_update=1, stale=False, five_hour_redline_ratio=0.5, seven_day_pct=40.0, extra_usage_used=12.34, extra_usage_limit=50.0, balance=7.5),
+            Snapshot(last_update=1, stale=False, five_hour_redline_ratio=0.5, seven_day_pct=40.0,
+                     extra_usage_used=12.34, extra_usage_limit=50.0, balance=7.5,
+                     five_hour_resets_at=int(time.time()) + 3 * 3600,
+                     seven_day_resets_at=int(time.time()) + 5 * 86400),
             # Snapshot(last_update=1, stale=True, five_hour_redline_ratio=0.5, seven_day_pct=40.0),
             # Snapshot(last_update=0, stale=True, five_hour_redline_ratio=0.5, seven_day_pct=40.0),
             # Snapshot(auth_failed=True, stale=True, five_hour_redline_ratio=0.5, seven_day_pct=40.0),
