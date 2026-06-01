@@ -18,7 +18,17 @@ one that imports pygame.
 
 import pygame
 
-from . import layout
+from . import assets, layout
+
+_background = None
+
+
+def _get_background():
+    """Lazily load and cache the all-segments-lit cluster bitmap."""
+    global _background
+    if _background is None:
+        _background = assets.load_image(layout.BACKGROUND)
+    return _background
 
 
 def reveal_segments(surface, rect, lit, total, opacity=None, orientation="h-right"):
@@ -63,12 +73,14 @@ def reveal_segments(surface, rect, lit, total, opacity=None, orientation="h-righ
 def render_frame(surface, snapshot, cfg):
     """Draw one frame of the cluster onto ``surface`` from ``snapshot``.
 
-    Skeleton (TD-3.1): clears to the background colour. Widget drawing is added
-    by TD-3.3..TD-3.8. ``cfg`` carries display knobs (dim opacity, utc offset)
-    those widgets will need.
+    Draws the all-segments-lit cluster bitmap. Per-instrument dimming and the
+    text readouts are layered on top by TD-3.4..TD-3.8 (each dims its segments
+    via ``reveal_segments`` and blits its readout). ``cfg`` carries display
+    knobs (dim opacity, utc offset) those widgets will need.
     """
     surface.fill(layout.C_BG)
-    # Widgets drawn here by TD-3.3..TD-3.8.
+    surface.blit(_get_background(), (0, 0))
+    # Per-widget dimming + readouts drawn here by TD-3.4..TD-3.8.
     return surface
 
 
