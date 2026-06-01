@@ -18,7 +18,7 @@ ERR_NO_TOKEN = "Session token required"  # CLAUDE_SESSION_KEY unset — nothing 
 ERR_AUTH = "Authorization Failed"   # 401/403 — cookie present but rejected
 ERR_CONNECTION = "Connection Error"  # request/transport failure
 ERR_RESPONSE = "Invalid Response"   # 200 body in an unexpected shape
-MSG_STALE = "Data Stale"            # had data, now older than STALE_AFTER
+ERR_STALE = "Data Stale"            # had data, now older than STALE_AFTER
 
 # Derived (no error set, but never polled successfully).
 MSG_NO_DATA = "No Data"
@@ -29,7 +29,7 @@ def fault_message(snapshot):
 
     An explicit error wins; otherwise a never-polled snapshot reads "No Data".
     """
-    if snapshot.error:
+    if snapshot.error is not None:
         return snapshot.error
     if snapshot.last_update == 0:
         return MSG_NO_DATA

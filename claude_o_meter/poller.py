@@ -145,6 +145,19 @@ def _redline(
     return sustainable, min(burn / sustainable, MAX_REDLINE_RATIO)
 
 
+def _mark_stale_if_aged(snapshot, now: int) -> None:
+    """Age data we once had into a stale fault. Runs at the top of every poll
+    iteration so it fires even on paths that ``continue`` (e.g. a run of 429s).
+    Skips when a more specific cause is already set, and before the first
+    successful poll (``last_update == 0``, which reads as "No Data")."""
+    if (
+        snapshot.error is None
+        and snapshot.last_update
+        and now - snapshot.last_update > STALE_AFTER
+    ):
+        snapshot.error = faults.ERR_STALE
+
+
 async def polling_loop(store: Store) -> None:
     from . import state
 
@@ -157,6 +170,10 @@ async def polling_loop(store: Store) -> None:
 
     async with AsyncSession(impersonate="chrome124") as session:
         while True:
+            # Age-out check runs first so every path (including the 429/auth
+            # continues below) gets a chance to mark data stale.
+            _mark_stale_if_aged(state.snapshot, int(time.time()))
+
             # Re-checked every iteration: the key can be exported into the
             # environment while the poller is already running.
             if not os.environ.get("CLAUDE_SESSION_KEY"):
@@ -283,17 +300,6 @@ async def polling_loop(store: Store) -> None:
                 log.warning("Request error: %s", exc)
                 state.snapshot.error = faults.ERR_CONNECTION
                 backoff = min(backoff + 30, 120)
-
-            # Data we once had can age out even when the latest poll didn't error
-            # (e.g. a run of 429s). Don't clobber a more specific cause, and don't
-            # fire before the first successful poll (that case reads as "No Data").
-            now_ts = int(time.time())
-            if (
-                not state.snapshot.error
-                and state.snapshot.last_update
-                and now_ts - state.snapshot.last_update > STALE_AFTER
-            ):
-                state.snapshot.error = faults.MSG_STALE
 
             await asyncio.sleep(backoff)
 

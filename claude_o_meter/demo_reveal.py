@@ -16,7 +16,7 @@ import time
 
 import pygame
 
-from . import faults, layout, render
+from . import layout, render
 from .config import load_config
 from .state import Snapshot
 
@@ -84,9 +84,9 @@ def main(delay_ms=10):
                      extra_usage_used=12.34, extra_usage_limit=50.0, balance=7.5,
                      five_hour_resets_at=int(time.time()) + 3 * 3600,
                      seven_day_resets_at=int(time.time()) + 5 * 86400),
-            # Snapshot(last_update=1, error=faults.MSG_STALE, five_hour_redline_ratio=0.5, seven_day_pct=40.0),
+            # Snapshot(last_update=1, error="Data Stale", five_hour_redline_ratio=0.5, seven_day_pct=40.0),
             # Snapshot(last_update=0, five_hour_redline_ratio=0.5, seven_day_pct=40.0),
-            # Snapshot(error=faults.ERR_AUTH, five_hour_redline_ratio=0.5, seven_day_pct=40.0),
+            # Snapshot(error="Authorization Failed", five_hour_redline_ratio=0.5, seven_day_pct=40.0),
         ]:
             if _wants_quit():
                 return

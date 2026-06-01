@@ -8,7 +8,7 @@ import os
 os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
 os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
 
-from claude_o_meter import assets, layout, render  # noqa: E402
+from claude_o_meter import assets, faults, layout, render  # noqa: E402
 from claude_o_meter.config import load_config  # noqa: E402
 from claude_o_meter.main import run_display  # noqa: E402
 from claude_o_meter.state import Snapshot  # noqa: E402
@@ -61,7 +61,7 @@ def test_render_frame_toggles_warning_lights():
         # Check-engine: lit on a fault, dimmed when healthy. last_update=1 keeps
         # the healthy snapshot out of the "no data" fault. Sampled at a lit pixel
         # of the icon (376,235); the tach dim excludes this rect.
-        ce_on = value_at(Snapshot(error="Data Stale", last_update=1), 376, 235)
+        ce_on = value_at(Snapshot(error=faults.ERR_STALE, last_update=1), 376, 235)
         ce_off = value_at(Snapshot(last_update=1), 376, 235)
         assert ce_on > ce_off
 

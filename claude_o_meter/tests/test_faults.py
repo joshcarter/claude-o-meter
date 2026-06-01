@@ -2,8 +2,8 @@
 
 from claude_o_meter.faults import (
     ERR_AUTH,
+    ERR_STALE,
     MSG_NO_DATA,
-    MSG_STALE,
     fault_message,
 )
 from claude_o_meter.state import Snapshot
@@ -24,4 +24,4 @@ def test_never_polled_is_no_data():
 
 
 def test_had_data_then_stale():
-    assert fault_message(Snapshot(error=MSG_STALE, last_update=123)) == MSG_STALE
+    assert fault_message(Snapshot(error=ERR_STALE, last_update=123)) == ERR_STALE
