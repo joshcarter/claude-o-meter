@@ -88,6 +88,20 @@ in a 480×320 window) → TD-4 (Pi 3 + PiTFT deployment, one systemd service).
   - [ ] TD-3.7 Money + reset readouts: extra-use $, extra-limit $, balance $ (USD
         from the snapshot; format `$X.XX`, clamp ≥999.99 defensively); 7-day reset
         date; 5-hour reset time (`fmt_hhmm`). USD only.
+    - [x] TD-3.7.a Money readouts (extra-use / extra-limit / balance $). Each is a
+          four-element group at a fixed top-left: "$" (Roboto Cond. Bold Italic
+          15pt @ +(0,3)), the value over a dim "888 88" ghost (DSEG7 Modern Mini
+          Bold Italic 20pt @ +(8,0)), "." (Roboto 32pt @ +(55,15)), and the label
+          (Roboto 15pt @ +(95,5)). Groups at (10,289)/(170,298)/(328,289).
+          `gauges.fmt_money` formats the 6-char field `"DDD CC"` (space = decimal,
+          dollars space-padded, clamp 999.99); `render.draw_money_group` lays the
+          field out in uniform digit-width cells (DSEG space adv 4 ≠ digit 16) so
+          live digits register on the ghost and the blank decimal cell falls under
+          the ".". `render_frame` shows the money row when healthy, the fault
+          message when faulted. Tests in `tests/test_money.py`.
+    - [ ] TD-3.7.b Reset readouts: 7-day reset date + 5-hour reset time
+          (`fmt_hhmm`). Pending position/font spec from the art (the bottom strip
+          is now occupied by the money row — these land elsewhere on the cluster).
   - [x] TD-3.8 Fault state machine reading the snapshot: map
         poll-failure / data-stale (`snapshot.stale`) / needs-auth
         (`snapshot.auth_failed`) → check-engine light + a distinct message each;

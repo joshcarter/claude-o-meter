@@ -72,3 +72,15 @@ def tach_number(ratio):
     """The 0..99 readout value for the tach, from the same redline_ratio as the
     bar (mirrors the PyPortal update_tach: position scaled onto 0..99)."""
     return int(round(tach_position(ratio) / (TACH_FRAMES - 1) * 99))
+
+
+def fmt_money(value):
+    """Format a USD amount as the six-character DSEG field ``"DDD CC"``: three
+    dollar digits, a space where the decimal point sits, then two cents digits.
+
+    Leading dollar digits are space-padded (blanked) so they fall on the dim
+    "888 88" ghost; cents are always two digits. ``None`` reads as 0.00 and the
+    amount is clamped to 999.99 (the field can't show more)."""
+    cents = round((value or 0.0) * 100)
+    cents = max(0, min(99999, cents))
+    return "%3d %02d" % (cents // 100, cents % 100)

@@ -173,13 +173,64 @@ def dim_low_fuel(surface, on, opacity=None):
 
 
 def draw_bottom(surface, fault_msg):
-    """Bottom status area. Draws the fault message (standard blue) with the top
-    of its capitals at BOTTOM_TEXT_POS when one is active. The money readouts
-    that occupy this area when healthy are pending their layout spec, so nothing
-    is drawn otherwise."""
+    """Bottom status area when a fault is active: the fault message (standard
+    blue) with the top of its capitals at BOTTOM_TEXT_POS. When healthy, this
+    area shows the money readouts instead (see ``draw_money``)."""
     if fault_msg:
         font = get_font(layout.FONT_LABEL, layout.BOTTOM_TEXT_PT)
         draw_text(surface, fault_msg, font, layout.C_LIGHT, captop_left=layout.BOTTOM_TEXT_POS)
+
+
+def _draw_ink_topleft(surface, text, font, color, pos):
+    """Blit ``text`` so the top-left of its visible ink lands at ``pos`` — the
+    literal corner a design tool reports for a placed text object."""
+    glyphs = font.render(text, True, color)
+    ink = glyphs.get_bounding_rect()
+    surface.blit(glyphs, (pos[0] - ink.x, pos[1] - ink.y))
+
+
+def draw_money_group(surface, value, label, group, cfg):
+    """Draw one money readout group at ``group`` (its top-left): "$", the USD
+    value over a dim "888 88" ghost, a ".", and ``label`` — each at its fixed
+    offset from the group corner. The value is laid out in uniform digit-width
+    cells so the live digits register on the ghost regardless of the (narrower)
+    DSEG space advance, and the blank decimal cell aligns under the ".".
+    """
+    gx, gy = group
+    light = layout.C_LIGHT
+
+    f_dollar = get_font(layout.FONT_LABEL, layout.MONEY_DOLLAR_PT)
+    _draw_ink_topleft(surface, "$", f_dollar, light,
+                      (gx + layout.MONEY_DOLLAR_OFF[0], gy + layout.MONEY_DOLLAR_OFF[1]))
+
+    f_val = get_font(layout.FONT_MONEY, layout.MONEY_VALUE_PT)
+    ghost_color = _dim_color(light, cfg.dim_opacity)
+    advance = f_val.size("8")[0]                       # DSEG digits are monospaced
+    ink8 = f_val.render("8", True, ghost_color).get_bounding_rect()
+    ox = gx + layout.MONEY_VALUE_OFF[0] - ink8.x       # "888 88" ink top-left → offset
+    oy = gy + layout.MONEY_VALUE_OFF[1] - ink8.y
+    field = gauges.fmt_money(value)
+    for i, ch in enumerate("888 88"):                  # dim all-segments ghost
+        if ch != " ":
+            surface.blit(f_val.render(ch, True, ghost_color), (ox + i * advance, oy))
+    for i, ch in enumerate(field):                     # bright live digits over it
+        if ch != " ":
+            surface.blit(f_val.render(ch, True, light), (ox + i * advance, oy))
+
+    f_point = get_font(layout.FONT_LABEL, layout.MONEY_POINT_PT)
+    _draw_ink_topleft(surface, ".", f_point, light,
+                      (gx + layout.MONEY_POINT_OFF[0], gy + layout.MONEY_POINT_OFF[1]))
+
+    f_label = get_font(layout.FONT_LABEL, layout.MONEY_LABEL_PT)
+    _draw_ink_topleft(surface, label, f_label, light,
+                      (gx + layout.MONEY_LABEL_OFF[0], gy + layout.MONEY_LABEL_OFF[1]))
+
+
+def draw_money(surface, snapshot, cfg):
+    """Draw the three money readouts (extra / limit / balance) from the
+    snapshot. Shown only when there is no active fault."""
+    for label, group, field in layout.MONEY_GROUPS:
+        draw_money_group(surface, getattr(snapshot, field), label, group, cfg)
 
 
 def _dim_color(color, opacity):
@@ -229,7 +280,12 @@ def render_frame(surface, snapshot, cfg):
     # Check-engine light + bottom message share one fault signal. (TD-3.8)
     fault_msg = faults.fault_message(snapshot)
     dim_check_engine(surface, fault_msg is not None, opacity)
-    draw_bottom(surface, fault_msg)
+
+    # Bottom strip: the fault message when one is active, else money. (TD-3.7)
+    if fault_msg:
+        draw_bottom(surface, fault_msg)
+    else:
+        draw_money(surface, snapshot, cfg)
 
     return surface
 
@@ -237,5 +293,6 @@ def render_frame(surface, snapshot, cfg):
 __all__ = [
     "render_frame", "dim_rect", "dim_tach", "dim_fuel",
     "dim_check_engine", "dim_low_fuel", "draw_tach_number", "draw_bottom",
-    "draw_text", "get_font", "reset_caches", "pygame",
+    "draw_money", "draw_money_group", "draw_text", "get_font",
+    "reset_caches", "pygame",
 ]

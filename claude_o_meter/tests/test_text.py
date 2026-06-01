@@ -81,17 +81,23 @@ def test_render_frame_draws_fault_message():
     try:
         cfg = load_config()
 
-        def bottom_has_blue_text(snap):
+        def blue_in(snap, x0, x1):
             surf = pygame.Surface((layout.SCREEN_W, layout.SCREEN_H))
             render.render_frame(surf, snap, cfg)
             for y in range(layout.BOTTOM_TEXT_POS[1], layout.SCREEN_H):
-                for x in range(10, 200):
+                for x in range(x0, x1):
                     r, _, b = surf.get_at((x, y))[:3]
                     if b > 120 and b > r * 2:        # project blue C_LIGHT
                         return True
             return False
 
-        assert bottom_has_blue_text(Snapshot(stale=True, last_update=0))    # NO DATA fault
-        assert not bottom_has_blue_text(Snapshot(stale=False, last_update=1))  # healthy
+        fault = Snapshot(stale=True, last_update=0)                   # NO DATA
+        healthy = Snapshot(stale=False, last_update=1, balance=7.5)
+        # The fault message lands at the left of the bottom strip.
+        assert blue_in(fault, 10, 200)
+        # When healthy, money fills the far-right Balance column; a fault leaves
+        # that column dark (the message replaces the whole money row).
+        assert blue_in(healthy, 328, 448)
+        assert not blue_in(fault, 328, 448)
     finally:
         pygame.quit()
