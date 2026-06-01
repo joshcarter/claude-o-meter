@@ -21,6 +21,45 @@ import pygame
 from . import layout
 
 
+def reveal_segments(surface, rect, lit, total, opacity=None, orientation="h-right"):
+    """Reveal ``lit`` of ``total`` segments of an already-blitted full-on bar.
+
+    The caller has already drawn the full-on bitmap into ``rect`` (x, y, w, h).
+    This draws a translucent black rectangle over the *un-lit* segments, its
+    edge **snapped to a segment boundary**, leaving ``lit`` segments visible.
+
+    ``lit`` may be fractional (e.g. from ``gauges.tach_position``); it is
+    rounded to the nearest whole segment so the dim edge always lands on a
+    boundary. ``opacity`` defaults to ``layout.DIM_DEFAULT_OPACITY``.
+
+    orientation:
+      ``"h-right"`` — horizontal bar, lit fills left→right, dim pinned right.
+      ``"v-top"``   — vertical bar, lit fills bottom→top, dim pinned top
+                      (drains top→bottom as ``lit`` falls).
+    """
+    if opacity is None:
+        opacity = layout.DIM_DEFAULT_OPACITY
+    x, y, w, h = rect
+    lit_seg = max(0, min(total, int(round(lit))))
+    if lit_seg >= total:
+        return  # fully lit — nothing to dim
+
+    if orientation == "h-right":
+        seg_w = w / total
+        dim_x = x + round(lit_seg * seg_w)
+        dim_rect = pygame.Rect(dim_x, y, x + w - dim_x, h)
+    elif orientation == "v-top":
+        seg_h = h / total
+        dim_h = round((total - lit_seg) * seg_h)
+        dim_rect = pygame.Rect(x, y, w, dim_h)
+    else:
+        raise ValueError(f"unknown orientation: {orientation!r}")
+
+    overlay = pygame.Surface((dim_rect.w, dim_rect.h), pygame.SRCALPHA)
+    overlay.fill((0, 0, 0, opacity))
+    surface.blit(overlay, (dim_rect.x, dim_rect.y))
+
+
 def render_frame(surface, snapshot, cfg):
     """Draw one frame of the cluster onto ``surface`` from ``snapshot``.
 

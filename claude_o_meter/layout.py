@@ -14,6 +14,10 @@ SCREEN_W = 480
 SCREEN_H = 320
 FPS = 30
 
+# Dimming-rectangle default opacity (0–255). 212 ≈ 83%, matches the PyPortal
+# ghost. config.toml's DIM_OPACITY overrides this per-deployment at the call site.
+DIM_DEFAULT_OPACITY = 212
+
 # --- Colours (RGB) — from code.py C_* palette -------------------------------
 C_BG = (0x00, 0x00, 0x00)      # background
 C_DARK = (0x0B, 0x1D, 0x20)    # unlit "ghost" segments

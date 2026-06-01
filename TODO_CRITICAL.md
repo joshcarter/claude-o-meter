@@ -42,10 +42,14 @@ in a 480×320 window) → TD-4 (Pi 3 + PiTFT deployment, one systemd service).
         Done in `claude_o_meter/gauges.py` (pygame-free); `fmt_hhmm` takes an
         explicit `utc_offset_hours` arg (was a module global). 9 unit tests in
         `tests/test_gauges.py`.
-  - [ ] TD-3.3 Dimming primitive: a reusable "reveal N of M segments" helper that
+  - [x] TD-3.3 Dimming primitive: a reusable "reveal N of M segments" helper that
         blits a full-on bitmap then a black `SRCALPHA` rectangle whose edge **snaps
         to a segment boundary**. Right-pinned (horizontal) and top-pinned (vertical)
         variants. Opacity tunable, default alpha≈212 (~83%, matches current ghost).
+        Done: `render.reveal_segments(surface, rect, lit, total, opacity,
+        orientation)` — `h-right`/`v-top`, fractional `lit` rounds to a segment
+        boundary, default opacity = `layout.DIM_DEFAULT_OPACITY` (212). 7 tests in
+        `tests/test_dimming.py`.
   - [ ] TD-3.4 Horizontal tach bar + 0–99 readout: segment count and number both
         driven by `redline_ratio` via `tach_position()` (mirrors `update_tach`).
         Number = DESG7 font, dark "88" ghost + live value overlay.
