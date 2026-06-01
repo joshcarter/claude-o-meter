@@ -106,7 +106,7 @@ def _redline(
 
 
 async def polling_loop(store: Store) -> None:
-    import src.state as state
+    from . import state
 
     interval = _poll_interval()
     backoff = interval

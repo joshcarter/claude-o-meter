@@ -1,0 +1,11 @@
+# claude-o-meter — single-process app (polling + pygame display)
+# Desktop: `python3 -m venv .venv && .venv/bin/pip install -r requirements.txt`
+
+# Display
+pygame>=2.6
+
+# Live polling of claude.ai (curl_cffi mimics Chrome's TLS fingerprint past
+# Cloudflare via impersonate="chrome124"). Not needed when DATA_SOURCE=fake,
+# but it's a core runtime dep so it's pinned here. >=0.15 also gets the
+# prebuilt aarch64 wheel for the Pi 3 (TD-4.1).
+curl-cffi>=0.15

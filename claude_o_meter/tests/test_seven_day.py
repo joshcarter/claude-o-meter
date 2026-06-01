@@ -1,12 +1,12 @@
 import tempfile
 import time
 
-from src.poller import (
+from claude_o_meter.poller import (
     MAX_REDLINE_RATIO,
     _compute_seven_day_burn,
     _redline,
 )
-from src.store import Store
+from claude_o_meter.store import Store
 
 
 def make_store():

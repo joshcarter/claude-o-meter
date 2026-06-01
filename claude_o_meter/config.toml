@@ -1,0 +1,17 @@
+# claude-o-meter configuration
+
+# Data source: "fake" (oscillating offline values) or "live" (real claude.ai polling).
+# For "live", set CLAUDE_SESSION_KEY as an environment variable (not here — it's a secret).
+DATA_SOURCE = "fake"
+
+# Poll cadence in seconds. For "live", bridged to POLL_INTERVAL_SECONDS for the poller.
+POLL_SECONDS = 60
+
+# UTC offset hours for the display clock (e.g. -7 for PDT). Used by the renderer (TD-3).
+UTC_OFFSET_HOURS = 0
+
+# Display mode: "window" (480×320 SDL window on Mac) or "framebuffer" (Pi TFT, TD-4).
+DISPLAY_MODE = "window"
+
+# Dimming-rectangle opacity (0–255). 212 ≈ 83% matches the current ghost effect.
+DIM_OPACITY = 212

@@ -1,8 +1,8 @@
 import tempfile
 import time
 
-from src.poller import _compute_five_hour_burn
-from src.store import Store
+from claude_o_meter.poller import _compute_five_hour_burn
+from claude_o_meter.store import Store
 
 
 def make_store():

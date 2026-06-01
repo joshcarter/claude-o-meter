@@ -1,7 +1,7 @@
 import time
 import tempfile
 
-from src.store import Store
+from claude_o_meter.store import Store
 
 
 def make_store():
