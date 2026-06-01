@@ -66,13 +66,15 @@ in a 480×320 window) → TD-4 (Pi 3 + PiTFT deployment, one systemd service).
         `dim_tach`/`dim_fuel` reading per-instrument geometry from `layout.py`.
         Fractional lit rounds to a segment boundary; opacity from `config.toml`'s
         `DIM_OPACITY`. Tests in `tests/test_dimming.py`.
-  - [ ] TD-3.4 Horizontal tach bar + 0–99 readout: segment count and number both
+  - [x] TD-3.4 Horizontal tach bar + 0–99 readout: segment count and number both
         driven by `redline_ratio` via `tach_position()` (mirrors `update_tach`).
         Number = DESG7 font, dark "88" ghost + live value overlay.
-        **Bar dimming done** — `render.dim_tach` driven by `tach_position(5h
-        redline_ratio)`, geometry (left0=10, pitch=20, y 16..286, right=403) in
-        `layout.py`; wired into `render_frame`. The 0–99 numeric readout still
-        pending its on-screen position/size.
+        Done: bar = `render.dim_tach` (geometry left0=10, pitch=20, y 16..286,
+        right=403). Number = `render.draw_tach_number` from `gauges.tach_number`
+        (round(tach_position/20*99)): DSEG7 Modern Mini Italic 80pt, dim "88"
+        ghost (blue precomputed as C_LIGHT·(255−DIM_OPACITY)/255) with the live
+        value bright, right-aligned in the two-digit field; visible "88" top-left
+        at `NUM_POS` (190,172). Both wired into `render_frame`.
   - [x] TD-3.5 Vertical fuel gauge: `fuel = clamp(100 − seven_day.utilization, 0,
         100)`, quantized to 20 segments, draining top→bottom (top-pinned dim).
         Done: `gauges.fuel_segments(utilization)` (pure, clamped, linear) →

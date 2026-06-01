@@ -24,6 +24,7 @@ def _draw(surface, cfg, tach_lit, fuel_lit, ce_on=False, lf_on=False):
     surface.fill(layout.C_BG)
     surface.blit(render._get_background(), (0, 0))
     render.dim_tach(surface, tach_lit, cfg.dim_opacity)
+    render.draw_tach_number(surface, round(tach_lit / layout.TACH_SEGMENTS * 99), cfg)
     render.dim_fuel(surface, fuel_lit, cfg.dim_opacity)
     render.dim_low_fuel(surface, lf_on, cfg.dim_opacity)
     render.dim_check_engine(surface, ce_on, cfg.dim_opacity)

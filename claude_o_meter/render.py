@@ -182,6 +182,30 @@ def draw_bottom(surface, fault_msg):
         draw_text(surface, fault_msg, font, layout.C_LIGHT, captop_left=layout.BOTTOM_TEXT_POS)
 
 
+def _dim_color(color, opacity):
+    """Colour as if a black rectangle at ``opacity`` were blitted over it —
+    i.e. brightness scaled by (255 - opacity)/255. Lets the DSEG "88" ghost be
+    drawn directly in one dimmed colour instead of a bright draw + a dim box."""
+    f = (255 - opacity) / 255.0
+    return (round(color[0] * f), round(color[1] * f), round(color[2] * f))
+
+
+def draw_tach_number(surface, value, cfg):
+    """Draw the 0–99 tach readout: a dim "88" ghost (all segments) with the live
+    value bright over it, right-aligned in the two-digit field. The visible "88"
+    top-left is anchored at NUM_POS."""
+    font = get_font(layout.FONT_READOUT, layout.READOUT_SIZE)
+    ghost = font.render("88", True, _dim_color(layout.C_LIGHT, cfg.dim_opacity))
+    ink = ghost.get_bounding_rect()
+    origin = (layout.NUM_POS[0] - ink.x, layout.NUM_POS[1] - ink.y)
+    surface.blit(ghost, origin)
+
+    text = str(value)
+    advance = font.size("8")[0]           # DSEG digits are monospaced
+    live = font.render(text, True, layout.C_LIGHT)
+    surface.blit(live, (origin[0] + (2 - len(text)) * advance, origin[1]))
+
+
 def render_frame(surface, snapshot, cfg):
     """Draw one frame of the cluster onto ``surface`` from ``snapshot``.
 
@@ -195,6 +219,7 @@ def render_frame(surface, snapshot, cfg):
     opacity = cfg.dim_opacity
 
     dim_tach(surface, gauges.tach_position(snapshot.five_hour_redline_ratio), opacity)
+    draw_tach_number(surface, gauges.tach_number(snapshot.five_hour_redline_ratio), cfg)
     dim_fuel(surface, gauges.fuel_segments(snapshot.seven_day_pct, layout.FUEL_SEGMENTS), opacity)
 
     # Low-fuel: lit when 7-day utilisation ≥ 80% (≤ 20% remaining). (TD-3.6)
@@ -211,6 +236,6 @@ def render_frame(surface, snapshot, cfg):
 
 __all__ = [
     "render_frame", "dim_rect", "dim_tach", "dim_fuel",
-    "dim_check_engine", "dim_low_fuel", "draw_bottom", "draw_text",
-    "get_font", "reset_caches", "pygame",
+    "dim_check_engine", "dim_low_fuel", "draw_tach_number", "draw_bottom",
+    "draw_text", "get_font", "reset_caches", "pygame",
 ]

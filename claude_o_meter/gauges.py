@@ -66,3 +66,9 @@ def tach_position(ratio):
     top = TACH_FRAMES - 1
     over = (ratio - 1.0) / (RED_FULL_RATIO - 1.0)
     return min(top, REDLINE_FRAME + (top - REDLINE_FRAME) * over)
+
+
+def tach_number(ratio):
+    """The 0..99 readout value for the tach, from the same redline_ratio as the
+    bar (mirrors the PyPortal update_tach: position scaled onto 0..99)."""
+    return int(round(tach_position(ratio) / (TACH_FRAMES - 1) * 99))

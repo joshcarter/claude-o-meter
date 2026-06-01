@@ -24,8 +24,8 @@ FONT_READOUT = "DSEG7ModernMini-Italic.ttf"        # 0–99 tach readout
 FONT_MONEY = "DSEG7ModernMini-BoldItalic.ttf"      # dollar amounts + reset date/time
 FONT_LABEL = "RobotoCondensed-BoldItalic.ttf"      # labels / messages
 
-# Provisional font sizes (px) — exact sizes pending the art spec.
-READOUT_SIZE = 64
+# Point sizes (art is 72 DPI → 1 pt = 1 px). MONEY/LABEL still provisional.
+READOUT_SIZE = 80
 MONEY_SIZE = 22
 LABEL_SIZE = 16
 
@@ -53,8 +53,9 @@ TACH_DIM_RIGHT = 403
 TACH_DIM_BOTTOM = 286
 
 # --- Two-digit 0–99 readout (numeric form of the tach) ----------------------
-NUM_X = 200
-NUM_Y = 120
+# DSEG7 Modern Mini Italic. Drawn as a dim "88" ghost (all segments) with the
+# live value bright over it. NUM_POS is the top-left of the visible "88".
+NUM_POS = (190, 172)
 
 # --- Vertical 20-segment fuel gauge (top-pinned dim) ------------------------
 # remaining = clamp(100 − seven_day.utilization, 0, 100), linear. Lit segments
