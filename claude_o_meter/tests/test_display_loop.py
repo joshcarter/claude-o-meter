@@ -46,6 +46,32 @@ def test_render_frame_dims_when_empty():
         pygame.quit()
 
 
+def test_render_frame_toggles_warning_lights():
+    import pygame
+
+    pygame.init()
+    try:
+        cfg = load_config()
+
+        def value_at(snap, x, y):
+            surf = pygame.Surface((layout.SCREEN_W, layout.SCREEN_H))
+            render.render_frame(surf, snap, cfg)
+            return surf.get_at((x, y))[0]
+
+        # Check-engine: lit on stale/auth-failed, dimmed otherwise. Sampled at a
+        # lit pixel of the icon (376,235); the tach dim excludes this rect.
+        ce_on = value_at(Snapshot(stale=True), 376, 235)
+        ce_off = value_at(Snapshot(stale=False, auth_failed=False), 376, 235)
+        assert ce_on > ce_off
+
+        # Low-fuel: lit when 7-day utilisation ≥ 80%. Sampled at (447,235).
+        lf_on = value_at(Snapshot(stale=False, seven_day_pct=90.0), 447, 235)
+        lf_off = value_at(Snapshot(stale=False, seven_day_pct=10.0), 447, 235)
+        assert lf_on > lf_off
+    finally:
+        pygame.quit()
+
+
 def test_run_display_bounded_frames():
     cfg = load_config()
     frames = run_display(cfg, max_frames=3)

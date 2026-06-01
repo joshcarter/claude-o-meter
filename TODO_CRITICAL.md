@@ -79,8 +79,10 @@ in a 480×320 window) → TD-4 (Pi 3 + PiTFT deployment, one systemd service).
         `render.dim_fuel`, geometry (bottom0=220, pitch=8, x 422..456, top=63) in
         `layout.py`; wired into `render_frame`. Verified via the reveal demo +
         unit tests.
-  - [ ] TD-3.6 Low-fuel light: lit when remaining ≤ 20% (`utilization ≥ 80`),
+  - [x] TD-3.6 Low-fuel light: lit when remaining ≤ 20% (`utilization ≥ 80`),
         else dimmed.
+        Done: `render.dim_low_fuel(surface, on)` over `LOW_FUEL_RECT`
+        (416,232)-(464,278); `render_frame` lights it when `seven_day_pct ≥ 80`.
   - [ ] TD-3.7 Money + reset readouts: extra-use $, extra-limit $, balance $ (USD
         from the snapshot; format `$X.XX`, clamp ≥999.99 defensively); 7-day reset
         date; 5-hour reset time (`fmt_hhmm`). USD only.
@@ -90,6 +92,12 @@ in a 480×320 window) → TD-4 (Pi 3 + PiTFT deployment, one systemd service).
         billing-feed failures excluded. **Delete** `wifi_kickoff`/`wifi_finish`/
         `wifi_recover` and all ESP32 reset logic — there is no network layer in the
         display half anymore.
+        Partial: the check-engine **light dimming** is done — `render.dim_check_engine`
+        over `CHECK_ENGINE_RECT` (355,232)-(403,278), lit on an interim
+        `stale or auth_failed` signal; the tach dim always excludes this rect (hole
+        punch) so it shines on a fault. Still to do: distinct per-fault messages,
+        the poll-failure case, and the message overlay. (No wifi code exists in the
+        new package to delete.)
   - [ ] TD-3.9 Verify on the Mac (windowed 480×320, `fake` source): tach, fuel
         gauge, both lights, money/reset readouts, and the check-engine fault
         overlay all animate through the fake source's cycles. This is the

@@ -68,13 +68,12 @@ FUEL_DIM_LEFT = 422
 FUEL_DIM_RIGHT = 456
 FUEL_DIM_TOP = 63
 
-# --- Warning lights ---------------------------------------------------------
-LOW_FUEL_X = 24
-LOW_FUEL_Y = 120
-CHECK_ENGINE_X = 24
-CHECK_ENGINE_Y = 160
-LIGHT_W = 40
-LIGHT_H = 40
+# --- Warning lights (dimmed when OFF; lit = condition true) -----------------
+# Rects are (x, y, w, h). The check-engine light sits under the tach arc, so the
+# tach dim always excludes CHECK_ENGINE_RECT and the light is dimmed solely by
+# its own rect — otherwise the overlap would dim it twice (too dark).
+CHECK_ENGINE_RECT = (355, 232, 48, 46)   # (355,232)–(403,278)
+LOW_FUEL_RECT = (416, 232, 48, 46)       # (416,232)–(464,278); clear of the tach
 
 # --- Money + reset readouts -------------------------------------------------
 EXTRA_USE_X = 24

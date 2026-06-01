@@ -112,3 +112,38 @@ def test_fuel_full_lit_no_dim():
     surf = _surface()
     render.dim_fuel(surf, 20)
     assert not _dimmed(surf, 439, 150)
+
+
+# --- hole punching + warning lights -----------------------------------------
+
+def test_dim_rect_hole_left_undimmed():
+    surf = _surface()
+    render.dim_rect(surf, (0, 0, 100, 100), holes=[(40, 40, 20, 20)])
+    assert not _dimmed(surf, 50, 50)   # inside the hole
+    assert _dimmed(surf, 10, 10)       # outside the hole, inside the rect
+
+
+def test_tach_dim_excludes_check_engine():
+    surf = _surface()
+    render.dim_tach(surf, 0)           # dim covers x10..403, y16..286
+    assert not _dimmed(surf, 376, 255)  # inside check-engine rect → punched out
+    assert _dimmed(surf, 340, 255)      # left of the light, still under the tach
+    assert _dimmed(surf, 376, 150)      # above the light, still under the tach
+
+
+def test_dim_check_engine_on_off():
+    on = _surface()
+    render.dim_check_engine(on, True)
+    assert not _dimmed(on, 376, 255)   # lit (fault) → undimmed
+    off = _surface()
+    render.dim_check_engine(off, False)
+    assert _dimmed(off, 376, 255)      # no fault → dimmed
+
+
+def test_dim_low_fuel_on_off():
+    on = _surface()
+    render.dim_low_fuel(on, True)
+    assert not _dimmed(on, 440, 255)
+    off = _surface()
+    render.dim_low_fuel(off, False)
+    assert _dimmed(off, 440, 255)

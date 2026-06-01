@@ -1,4 +1,5 @@
-"""Manual visual check: reveal the tach bars one by one, then the fuel bars.
+"""Manual visual check: reveal the tach bars, then the fuel bars, then the
+warning lights (including the check-engine light shining through a dimmed tach).
 
 Opens a real 480×320 window (needs a desktop display — this is not an automated
 test). Run it from the repo root:
@@ -17,11 +18,13 @@ from . import layout, render
 from .config import load_config
 
 
-def _draw(surface, cfg, tach_lit, fuel_lit):
+def _draw(surface, cfg, tach_lit, fuel_lit, ce_on=False, lf_on=False):
     surface.fill(layout.C_BG)
     surface.blit(render._get_background(), (0, 0))
     render.dim_tach(surface, tach_lit, cfg.dim_opacity)
     render.dim_fuel(surface, fuel_lit, cfg.dim_opacity)
+    render.dim_low_fuel(surface, lf_on, cfg.dim_opacity)
+    render.dim_check_engine(surface, ce_on, cfg.dim_opacity)
     pygame.display.flip()
 
 
@@ -58,6 +61,16 @@ def main(delay_ms=150):
                 return
             _draw(surface, cfg, layout.TACH_SEGMENTS, lit)
             pygame.time.delay(delay_ms)
+        pygame.time.delay(delay_ms * 2)
+
+        # Warning lights. Tach left partially dimmed (12) so the check-engine
+        # light sits under the tach dim — it must still light cleanly.
+        hold = delay_ms * 4
+        for ce_on, lf_on in [(False, False), (True, False), (False, True), (True, True)]:
+            if _wants_quit():
+                return
+            _draw(surface, cfg, 12, 10, ce_on=ce_on, lf_on=lf_on)
+            pygame.time.delay(hold)
 
         # Hold the final frame until the window is closed.
         while not _wants_quit():
