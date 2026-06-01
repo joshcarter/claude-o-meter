@@ -2,8 +2,8 @@ import asyncio
 import logging
 import os
 import threading
-import time
 
+from . import layout
 from .config import load_config
 
 logging.basicConfig(
@@ -30,12 +30,8 @@ def _start_poll_thread(coro_factory):
     return t
 
 
-def main():
-    from . import state
-
-    cfg = load_config()
-    log.info("Starting claude-o-meter (source=%s)", cfg.data_source)
-
+def _start_poll_source(cfg):
+    """Start the configured data source on the background poll thread."""
     if cfg.data_source == "live":
         from .store import Store
         from .poller import polling_loop
@@ -43,24 +39,54 @@ def main():
         os.environ.setdefault("POLL_INTERVAL_SECONDS", str(cfg.poll_seconds))
         db_path = os.environ.get("DB_PATH", "./samples.db")
         store = Store(db_path)
-        _start_poll_thread(lambda: polling_loop(store))
+        return _start_poll_thread(lambda: polling_loop(store))
 
-    elif cfg.data_source == "fake":
+    if cfg.data_source == "fake":
         from .fakesource import fake_loop
-        _start_poll_thread(lambda: fake_loop(cfg.poll_seconds))
+        return _start_poll_thread(lambda: fake_loop(cfg.poll_seconds))
 
-    else:
-        raise ValueError(f"Unknown DATA_SOURCE: {cfg.data_source!r}")
+    raise ValueError(f"Unknown DATA_SOURCE: {cfg.data_source!r}")
 
-    # Main thread: log snapshot once/second (placeholder for the pygame loop in TD-3)
-    while True:
-        s = state.snapshot
-        log.info(
-            "snapshot: 5h=%.1f%% redline=%s  7d=%.1f%% redline=%s  stale=%s",
-            s.five_hour_pct or 0.0,
-            f"{s.five_hour_redline_ratio:.2f}" if s.five_hour_redline_ratio is not None else "n/a",
-            s.seven_day_pct or 0.0,
-            f"{s.seven_day_redline_ratio:.2f}" if s.seven_day_redline_ratio is not None else "n/a",
-            s.stale,
-        )
-        time.sleep(1)
+
+def run_display(cfg, max_frames=None):
+    """Open a 480×320 surface and run the pygame loop on the calling (main)
+    thread, rendering ``state.snapshot`` each frame.
+
+    ``max_frames`` bounds the loop for headless verification/tests; ``None``
+    runs until the window is closed. Honours ``SDL_VIDEODRIVER=dummy`` for
+    headless runs (no window, no display required).
+    """
+    import pygame
+
+    from . import render, state
+
+    pygame.init()
+    try:
+        surface = pygame.display.set_mode((layout.SCREEN_W, layout.SCREEN_H))
+        pygame.display.set_caption("claude-o-meter")
+        clock = pygame.time.Clock()
+
+        frames = 0
+        running = True
+        while running:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    running = False
+
+            render.render_frame(surface, state.snapshot, cfg)
+            pygame.display.flip()
+            clock.tick(layout.FPS)
+
+            frames += 1
+            if max_frames is not None and frames >= max_frames:
+                running = False
+        return frames
+    finally:
+        pygame.quit()
+
+
+def main():
+    cfg = load_config()
+    log.info("Starting claude-o-meter (source=%s)", cfg.data_source)
+    _start_poll_source(cfg)
+    run_display(cfg)

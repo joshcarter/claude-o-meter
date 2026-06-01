@@ -27,10 +27,15 @@ in a 480×320 window) → TD-4 (Pi 3 + PiTFT deployment, one systemd service).
   HTTP). Develop on the Mac in a **windowed 480×320 SDL surface** against the
   `fake` data source. Use named layout constants so the pending pixel/font spec
   can drop in later without restructuring.
-  - [ ] TD-3.1 Add `render.py` and `layout.py` (pixel constants + segment
+  - [x] TD-3.1 Add `render.py` and `layout.py` (pixel constants + segment
         boundaries) to the package. `main.py` opens a 480×320 window and runs the
         pygame loop on the main thread, reading the shared `state.snapshot` each
         frame.
+        Done: `layout.py` (named provisional constants — exact pixels pending),
+        `render.py` (`render_frame()` skeleton clearing to bg; widgets land in
+        TD-3.3..3.8), `main.py` `run_display()` runs the main-thread pygame loop
+        reading `state.snapshot`. Headless-verified via SDL dummy driver in
+        `tests/test_display_loop.py` (2 tests).
   - [x] TD-3.2 Port pure helpers verbatim from `code.py`: `tach_position()`,
         `fmt_hhmm()`, `fmt_duration()`, `_clamp01()`. Tach keeps the `redline_ratio`
         mapping and knobs (`REDLINE_FRAME`, `BLUE_EXPONENT`, `RED_FULL_RATIO`).
