@@ -83,14 +83,15 @@ LOW_FUEL_RECT = (416, 232, 48, 46)       # (416,232)–(464,278); clear of the t
 #   "$"        Roboto Condensed Bold Italic 15 pt at (0, 3)
 #   value      DSEG7 Modern Mini Bold Italic 20 pt at (8, 0); drawn over a dim
 #              "888 88" ghost in the field "DDD CC" (space = decimal point)
-#   "."        Roboto Condensed Bold Italic 32 pt at (55, 15)
+#   "."        Roboto Condensed Bold Italic 32 pt at (54, 15)
 #   label      Roboto Condensed Bold Italic 15 pt at (95, 5)
 #
-# DSEG space advance (4 px) ≠ digit advance (16 px), so the value is laid out in
-# uniform digit-width cells (the gap cell lands the "." at x≈56, matching 55).
+# The three dollar digits sit in digit cells (so leading blanks register on the
+# ghost), then a single natural space (4 px) before the two cent digits — the
+# "." at +(54,15) overlays that gap.
 MONEY_DOLLAR_OFF = (0, 3)
 MONEY_VALUE_OFF = (8, 0)
-MONEY_POINT_OFF = (55, 15)
+MONEY_POINT_OFF = (54, 15)
 MONEY_LABEL_OFF = (95, 5)
 MONEY_DOLLAR_PT = 15
 MONEY_VALUE_PT = 20
@@ -100,7 +101,7 @@ MONEY_LABEL_PT = 15
 # (label, group top-left, Snapshot field). Drawn when there is no active fault.
 MONEY_GROUPS = (
     ("Extra", (10, 289), "extra_usage_used"),
-    ("Limit", (170, 298), "extra_usage_limit"),
+    ("Limit", (170, 289), "extra_usage_limit"),
     ("Balance", (328, 289), "balance"),
 )
 

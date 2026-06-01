@@ -92,13 +92,14 @@ in a 480×320 window) → TD-4 (Pi 3 + PiTFT deployment, one systemd service).
           four-element group at a fixed top-left: "$" (Roboto Cond. Bold Italic
           15pt @ +(0,3)), the value over a dim "888 88" ghost (DSEG7 Modern Mini
           Bold Italic 20pt @ +(8,0)), "." (Roboto 32pt @ +(55,15)), and the label
-          (Roboto 15pt @ +(95,5)). Groups at (10,289)/(170,298)/(328,289).
+          (Roboto 15pt @ +(95,5)). Groups at (10,289)/(170,289)/(328,289).
           `gauges.fmt_money` formats the 6-char field `"DDD CC"` (space = decimal,
-          dollars space-padded, clamp 999.99); `render.draw_money_group` lays the
-          field out in uniform digit-width cells (DSEG space adv 4 ≠ digit 16) so
-          live digits register on the ghost and the blank decimal cell falls under
-          the ".". `render_frame` shows the money row when healthy, the fault
-          message when faulted. Tests in `tests/test_money.py`.
+          dollars space-padded, clamp 999.99); `render.draw_money_group` packs the
+          three dollar digits in digit cells (DSEG space adv 4 ≠ digit 16, so
+          leading blanks register on the ghost) then a natural space before the
+          two cent digits, with the "." overlaying that gap. `render_frame` shows
+          the money row when healthy, the fault message when faulted. Tests in
+          `tests/test_money.py`.
     - [ ] TD-3.7.b Reset readouts: 7-day reset date + 5-hour reset time
           (`fmt_hhmm`). Pending position/font spec from the art (the bottom strip
           is now occupied by the money row — these land elsewhere on the cluster).

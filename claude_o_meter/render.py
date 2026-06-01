@@ -206,16 +206,25 @@ def draw_money_group(surface, value, label, group, cfg):
     f_val = get_font(layout.FONT_MONEY, layout.MONEY_VALUE_PT)
     ghost_color = _dim_color(light, cfg.dim_opacity)
     advance = f_val.size("8")[0]                       # DSEG digits are monospaced
+    space_w = f_val.size(" ")[0]                        # narrower than a digit
     ink8 = f_val.render("8", True, ghost_color).get_bounding_rect()
     ox = gx + layout.MONEY_VALUE_OFF[0] - ink8.x       # "888 88" ink top-left → offset
     oy = gy + layout.MONEY_VALUE_OFF[1] - ink8.y
+
+    # The field is "DDD CC". Leading dollar blanks must keep a full digit cell so
+    # the live digits register on the ghost, but the dollars↔cents gap stays the
+    # font's natural space width. So pack the three dollar digits in digit cells,
+    # then advance by one real space before the two cent digits.
+    def cell_x(i):
+        return ox + i * advance if i < 3 else ox + 3 * advance + space_w + (i - 4) * advance
+
     field = gauges.fmt_money(value)
     for i, ch in enumerate("888 88"):                  # dim all-segments ghost
         if ch != " ":
-            surface.blit(f_val.render(ch, True, ghost_color), (ox + i * advance, oy))
+            surface.blit(f_val.render(ch, True, ghost_color), (cell_x(i), oy))
     for i, ch in enumerate(field):                     # bright live digits over it
         if ch != " ":
-            surface.blit(f_val.render(ch, True, light), (ox + i * advance, oy))
+            surface.blit(f_val.render(ch, True, light), (cell_x(i), oy))
 
     f_point = get_font(layout.FONT_LABEL, layout.MONEY_POINT_PT)
     _draw_ink_topleft(surface, ".", f_point, light,
