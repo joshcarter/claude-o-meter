@@ -1,5 +1,6 @@
 """Manual visual check: reveal the tach bars, then the fuel bars, then the
-warning lights (including the check-engine light shining through a dimmed tach).
+warning lights (including the check-engine light shining through a dimmed tach),
+then the bottom fault messages.
 
 Opens a real 480×320 window (needs a desktop display — this is not an automated
 test). Run it from the repo root:
@@ -16,6 +17,7 @@ import pygame
 
 from . import layout, render
 from .config import load_config
+from .state import Snapshot
 
 
 def _draw(surface, cfg, tach_lit, fuel_lit, ce_on=False, lf_on=False):
@@ -70,6 +72,21 @@ def main(delay_ms=150):
             if _wants_quit():
                 return
             _draw(surface, cfg, 12, 10, ce_on=ce_on, lf_on=lf_on)
+            pygame.time.delay(hold)
+        pygame.time.delay(hold)
+
+        # Bottom status area: the full snapshot pipeline, cycling fault messages
+        # (healthy → no message; stale; never-polled; needs-auth).
+        for snap in [
+            Snapshot(last_update=1, stale=False, five_hour_redline_ratio=0.5, seven_day_pct=40.0),
+            Snapshot(last_update=1, stale=True, five_hour_redline_ratio=0.5, seven_day_pct=40.0),
+            Snapshot(last_update=0, stale=True, five_hour_redline_ratio=0.5, seven_day_pct=40.0),
+            Snapshot(auth_failed=True, stale=True, five_hour_redline_ratio=0.5, seven_day_pct=40.0),
+        ]:
+            if _wants_quit():
+                return
+            render.render_frame(surface, snap, cfg)
+            pygame.display.flip()
             pygame.time.delay(hold)
 
         # Hold the final frame until the window is closed.

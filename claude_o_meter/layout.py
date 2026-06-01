@@ -87,6 +87,9 @@ RESET_7D_Y = 220
 RESET_5H_X = 200
 RESET_5H_Y = 244
 
-# --- Fault message overlay --------------------------------------------------
-MSG_X = SCREEN_W // 2
-MSG_Y = SCREEN_H - 24
+# --- Bottom status area -----------------------------------------------------
+# Shows the fault message when one is active, else the money readouts. Anchored
+# by the text's ink box so the measured corner is exact. The money layout
+# (positions/format for the three values) is still provisional — see render.py.
+BOTTOM_TEXT_POS = (10, 296)   # top-left of the visible CAPITALS of the message
+BOTTOM_TEXT_PT = 15           # point size (art is 72 DPI → 1 pt = 1 px)

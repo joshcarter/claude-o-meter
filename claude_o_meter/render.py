@@ -17,9 +17,75 @@ one that imports pygame.
 
 import pygame
 
-from . import assets, gauges, layout
+from . import assets, faults, gauges, layout
 
 _background = None
+_font_cache = {}
+_cap_offset_cache = {}
+
+
+def _cap_offset(font):
+    """Pixels from a rendered line-box top down to the top of the capitals.
+
+    pygame reserves ascent space above the caps (for accents); a design tool
+    measures the visible cap top. Derived from a flat-topped capital so it is a
+    font property, independent of the message. Cached per font."""
+    off = _cap_offset_cache.get(id(font))
+    if off is None:
+        off = font.render("H", True, (255, 255, 255)).get_bounding_rect().top
+        _cap_offset_cache[id(font)] = off
+    return off
+
+
+def get_font(filename, pt):
+    """Cached pygame Font at point size ``pt``. The art is designed at 72 DPI,
+    where 1 pt = 1 px, and SDL_ttf sizes in points too, so a point size from the
+    Affinity document is passed straight through."""
+    key = (filename, pt)
+    font = _font_cache.get(key)
+    if font is None:
+        font = assets.load_font(filename, pt)
+        _font_cache[key] = font
+    return font
+
+
+def reset_caches():
+    """Drop cached SDL resources (background surface, fonts). Tests call this
+    after pygame.quit() so stale handles aren't reused on the next init."""
+    global _background
+    _background = None
+    _font_cache.clear()
+    _cap_offset_cache.clear()
+
+
+def draw_text(surface, text, font, color, *,
+              captop_left=None, topleft=None, bottomleft=None, baseline_left=None):
+    """Render ``text`` and blit it anchored by the font's metrics (not the
+    per-glyph ink), so the position is independent of which characters the
+    string contains — every message lands on the same baseline.
+
+      captop_left    top of the visible capitals  (what a design tool measures)
+      topleft        line-box top-left            (cap top minus ascent padding)
+      bottomleft     line-box bottom-left         (the descender line)
+      baseline_left  the typographic baseline
+
+    Returns the line-box Rect placed in surface coordinates.
+    """
+    glyphs = font.render(text, True, color)
+    w, h = glyphs.get_size()
+    if captop_left is not None:
+        pos = (captop_left[0], captop_left[1] - _cap_offset(font))
+    elif topleft is not None:
+        pos = topleft
+    elif bottomleft is not None:
+        pos = (bottomleft[0], bottomleft[1] - h)
+    elif baseline_left is not None:
+        pos = (baseline_left[0], baseline_left[1] - font.get_ascent())
+    else:
+        raise ValueError("draw_text needs an anchor "
+                         "(captop_left/topleft/bottomleft/baseline_left)")
+    surface.blit(glyphs, pos)
+    return pygame.Rect(pos[0], pos[1], w, h)
 
 
 def _get_background():
@@ -106,13 +172,23 @@ def dim_low_fuel(surface, on, opacity=None):
         dim_rect(surface, layout.LOW_FUEL_RECT, opacity)
 
 
+def draw_bottom(surface, fault_msg):
+    """Bottom status area. Draws the fault message (standard blue) with the top
+    of its capitals at BOTTOM_TEXT_POS when one is active. The money readouts
+    that occupy this area when healthy are pending their layout spec, so nothing
+    is drawn otherwise."""
+    if fault_msg:
+        font = get_font(layout.FONT_LABEL, layout.BOTTOM_TEXT_PT)
+        draw_text(surface, fault_msg, font, layout.C_LIGHT, captop_left=layout.BOTTOM_TEXT_POS)
+
+
 def render_frame(surface, snapshot, cfg):
     """Draw one frame of the cluster onto ``surface`` from ``snapshot``.
 
-    Blits the all-segments-lit cluster bitmap, then dims the un-lit tach and
-    fuel segments and the two warning lights when their conditions are not met.
-    The numeric readouts layer on top in TD-3.4/3.7 once their positions are
-    specified; TD-3.8 will own the full fault → check-engine + message logic.
+    Blits the all-segments-lit cluster bitmap, dims the un-lit tach/fuel
+    segments and the two warning lights, then draws the bottom status area
+    (fault message when one is active). The tach 0–99 number and the money
+    readouts layer on top once their layouts are specified.
     """
     surface.fill(layout.C_BG)
     surface.blit(_get_background(), (0, 0))
@@ -125,15 +201,16 @@ def render_frame(surface, snapshot, cfg):
     low_fuel_on = (snapshot.seven_day_pct or 0.0) >= 80.0
     dim_low_fuel(surface, low_fuel_on, opacity)
 
-    # Check-engine: interim signal = data stale or auth failed; TD-3.8 refines
-    # this into the full fault state machine + message.
-    check_engine_on = bool(snapshot.stale or snapshot.auth_failed)
-    dim_check_engine(surface, check_engine_on, opacity)
+    # Check-engine light + bottom message share one fault signal. (TD-3.8)
+    fault_msg = faults.fault_message(snapshot)
+    dim_check_engine(surface, fault_msg is not None, opacity)
+    draw_bottom(surface, fault_msg)
 
     return surface
 
 
 __all__ = [
     "render_frame", "dim_rect", "dim_tach", "dim_fuel",
-    "dim_check_engine", "dim_low_fuel", "pygame",
+    "dim_check_engine", "dim_low_fuel", "draw_bottom", "draw_text",
+    "get_font", "reset_caches", "pygame",
 ]

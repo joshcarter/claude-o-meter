@@ -86,18 +86,23 @@ in a 480×320 window) → TD-4 (Pi 3 + PiTFT deployment, one systemd service).
   - [ ] TD-3.7 Money + reset readouts: extra-use $, extra-limit $, balance $ (USD
         from the snapshot; format `$X.XX`, clamp ≥999.99 defensively); 7-day reset
         date; 5-hour reset time (`fmt_hhmm`). USD only.
-  - [ ] TD-3.8 Fault state machine reading the snapshot: map
+  - [x] TD-3.8 Fault state machine reading the snapshot: map
         poll-failure / data-stale (`snapshot.stale`) / needs-auth
         (`snapshot.auth_failed`) → check-engine light + a distinct message each;
         billing-feed failures excluded. **Delete** `wifi_kickoff`/`wifi_finish`/
         `wifi_recover` and all ESP32 reset logic — there is no network layer in the
         display half anymore.
-        Partial: the check-engine **light dimming** is done — `render.dim_check_engine`
-        over `CHECK_ENGINE_RECT` (355,232)-(403,278), lit on an interim
-        `stale or auth_failed` signal; the tach dim always excludes this rect (hole
-        punch) so it shines on a fault. Still to do: distinct per-fault messages,
-        the poll-failure case, and the message overlay. (No wifi code exists in the
-        new package to delete.)
+        Done: `faults.fault_message(snapshot)` (pure) → three distinct messages by
+        priority — `NEEDS AUTH` (`auth_failed`) > `NO DATA` (`last_update==0`,
+        never polled = poll-failure) > `DATA STALE` (`stale` with prior data).
+        `render_frame` drives both the check-engine light (`dim_check_engine` over
+        `CHECK_ENGINE_RECT`, tach dim hole-punched so it shines on a fault) and the
+        bottom message from this one signal. Billing-feed failures never set
+        `stale`/`auth_failed` (poller), so they can't trip a fault. Message =
+        Roboto Condensed Bold Italic 15pt in project blue (#40A9BF), text-box
+        top-left at (10,296). Text is anchored by font line-box metrics (not ink)
+        via `draw_text`, so every message shares one baseline; positions are given
+        as the Affinity top-left (72 DPI → pt = px). (No wifi code to delete.)
   - [ ] TD-3.9 Verify on the Mac (windowed 480×320, `fake` source): tach, fuel
         gauge, both lights, money/reset readouts, and the check-engine fault
         overlay all animate through the fake source's cycles. This is the
