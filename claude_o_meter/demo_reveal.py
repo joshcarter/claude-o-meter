@@ -16,7 +16,7 @@ import time
 
 import pygame
 
-from . import layout, render
+from . import faults, layout, render
 from .config import load_config
 from .state import Snapshot
 
@@ -78,15 +78,15 @@ def main(delay_ms=10):
         pygame.time.delay(hold)
 
         # Bottom status area: the full snapshot pipeline, cycling fault messages
-        # (healthy → no message; stale; never-polled; needs-auth).
+        # (healthy → no message; stale; never-polled; auth failure).
         for snap in [
-            Snapshot(last_update=1, stale=False, five_hour_redline_ratio=0.5, seven_day_pct=40.0,
+            Snapshot(last_update=1, five_hour_redline_ratio=0.5, seven_day_pct=40.0,
                      extra_usage_used=12.34, extra_usage_limit=50.0, balance=7.5,
                      five_hour_resets_at=int(time.time()) + 3 * 3600,
                      seven_day_resets_at=int(time.time()) + 5 * 86400),
-            # Snapshot(last_update=1, stale=True, five_hour_redline_ratio=0.5, seven_day_pct=40.0),
-            # Snapshot(last_update=0, stale=True, five_hour_redline_ratio=0.5, seven_day_pct=40.0),
-            # Snapshot(auth_failed=True, stale=True, five_hour_redline_ratio=0.5, seven_day_pct=40.0),
+            # Snapshot(last_update=1, error=faults.MSG_STALE, five_hour_redline_ratio=0.5, seven_day_pct=40.0),
+            # Snapshot(last_update=0, five_hour_redline_ratio=0.5, seven_day_pct=40.0),
+            # Snapshot(error=faults.ERR_AUTH, five_hour_redline_ratio=0.5, seven_day_pct=40.0),
         ]:
             if _wants_quit():
                 return

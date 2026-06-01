@@ -20,8 +20,7 @@ class Snapshot:
     extra_usage_limit: Optional[float] = None   # USD
     extra_usage_enabled: Optional[bool] = None
     balance: Optional[float] = None             # USD prepaid credit balance
-    stale: bool = True
-    auth_failed: bool = False
+    error: Optional[str] = None                 # human-readable fault cause, or None when healthy
     last_update: int = 0
 
 

@@ -60,7 +60,7 @@ def test_render_frame_shows_money_when_healthy():
     try:
         cfg = load_config()
         surf = pygame.Surface((layout.SCREEN_W, layout.SCREEN_H))
-        snap = Snapshot(stale=False, last_update=1, five_hour_redline_ratio=0.5,
+        snap = Snapshot(last_update=1, five_hour_redline_ratio=0.5,
                         seven_day_pct=40.0, extra_usage_used=12.34,
                         extra_usage_limit=50.0, balance=7.5)
         render.render_frame(surf, snap, cfg)
@@ -84,9 +84,9 @@ def test_render_frame_hides_money_on_fault():
     try:
         cfg = load_config()
         surf = pygame.Surface((layout.SCREEN_W, layout.SCREEN_H))
-        # Never-polled → NO DATA fault: the bottom strip shows the message, not
+        # Never-polled → No Data fault: the bottom strip shows the message, not
         # the money groups (no "$" ink far right where Balance would sit).
-        render.render_frame(surf, Snapshot(stale=True, last_update=0), cfg)
+        render.render_frame(surf, Snapshot(last_update=0), cfg)
         balance_blue = False
         for y in range(285, layout.SCREEN_H):
             for x in range(328, 448):

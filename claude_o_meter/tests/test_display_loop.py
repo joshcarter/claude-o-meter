@@ -61,13 +61,13 @@ def test_render_frame_toggles_warning_lights():
         # Check-engine: lit on a fault, dimmed when healthy. last_update=1 keeps
         # the healthy snapshot out of the "no data" fault. Sampled at a lit pixel
         # of the icon (376,235); the tach dim excludes this rect.
-        ce_on = value_at(Snapshot(stale=True, last_update=1), 376, 235)
-        ce_off = value_at(Snapshot(stale=False, last_update=1), 376, 235)
+        ce_on = value_at(Snapshot(error="Data Stale", last_update=1), 376, 235)
+        ce_off = value_at(Snapshot(last_update=1), 376, 235)
         assert ce_on > ce_off
 
         # Low-fuel: lit when 7-day utilisation ≥ 80%. Sampled at (447,235).
-        lf_on = value_at(Snapshot(stale=False, last_update=1, seven_day_pct=90.0), 447, 235)
-        lf_off = value_at(Snapshot(stale=False, last_update=1, seven_day_pct=10.0), 447, 235)
+        lf_on = value_at(Snapshot(last_update=1, seven_day_pct=90.0), 447, 235)
+        lf_off = value_at(Snapshot(last_update=1, seven_day_pct=10.0), 447, 235)
         assert lf_on > lf_off
     finally:
         pygame.quit()

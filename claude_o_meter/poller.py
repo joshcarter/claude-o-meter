@@ -6,6 +6,7 @@ from typing import Optional
 
 from curl_cffi.requests import AsyncSession
 
+from . import faults
 from .store import Store
 
 log = logging.getLogger(__name__)
@@ -156,6 +157,13 @@ async def polling_loop(store: Store) -> None:
 
     async with AsyncSession(impersonate="chrome124") as session:
         while True:
+            # Re-checked every iteration: the key can be exported into the
+            # environment while the poller is already running.
+            if not os.environ.get("CLAUDE_SESSION_KEY"):
+                state.snapshot.error = faults.ERR_NO_TOKEN
+                await asyncio.sleep(interval)
+                continue
+
             try:
                 if state.org_id is None:
                     state.org_id = await _fetch_org_id(session)
@@ -171,9 +179,8 @@ async def polling_loop(store: Store) -> None:
                     log.warning("HTTP %s — body: %.500s", resp.status_code, resp.text)
 
                 if resp.status_code in (401, 403):
-                    log.warning("Auth failure (%s) — marking auth_failed", resp.status_code)
-                    state.snapshot.stale = True
-                    state.snapshot.auth_failed = True
+                    log.warning("Auth failure (%s) — %s", resp.status_code, faults.ERR_AUTH)
+                    state.snapshot.error = faults.ERR_AUTH
                     if not auth_incident_notified:
                         auth_incident_notified = True
                         log.error("Cookie needs renewal — update CLAUDE_SESSION_KEY and restart")
@@ -246,8 +253,7 @@ async def polling_loop(store: Store) -> None:
                         state.snapshot.extra_usage_limit = None
                         state.snapshot.extra_usage_enabled = None
 
-                    state.snapshot.stale = False
-                    state.snapshot.auth_failed = False
+                    state.snapshot.error = None
                     state.snapshot.last_update = now
                     auth_incident_notified = False
                     backoff = interval
@@ -271,16 +277,23 @@ async def polling_loop(store: Store) -> None:
 
                 except (KeyError, ValueError, TypeError) as exc:
                     log.error("Unexpected response shape: %s — raw: %.500s", exc, resp.text)
-                    state.snapshot.stale = True
+                    state.snapshot.error = faults.ERR_RESPONSE
 
             except Exception as exc:
                 log.warning("Request error: %s", exc)
-                state.snapshot.stale = True
+                state.snapshot.error = faults.ERR_CONNECTION
                 backoff = min(backoff + 30, 120)
 
+            # Data we once had can age out even when the latest poll didn't error
+            # (e.g. a run of 429s). Don't clobber a more specific cause, and don't
+            # fire before the first successful poll (that case reads as "No Data").
             now_ts = int(time.time())
-            if now_ts - state.snapshot.last_update > STALE_AFTER:
-                state.snapshot.stale = True
+            if (
+                not state.snapshot.error
+                and state.snapshot.last_update
+                and now_ts - state.snapshot.last_update > STALE_AFTER
+            ):
+                state.snapshot.error = faults.MSG_STALE
 
             await asyncio.sleep(backoff)
 

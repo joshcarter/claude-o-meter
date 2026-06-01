@@ -42,8 +42,7 @@ async def fake_loop(poll_seconds: int = 60) -> None:
         state.snapshot.extra_usage_enabled = True
         state.snapshot.balance = round(100.0 + 20.0 * math.sin(2 * math.pi * phase + 0.5), 2)
 
-        state.snapshot.stale = False
-        state.snapshot.auth_failed = False
+        state.snapshot.error = None
         state.snapshot.last_update = now
 
         await asyncio.sleep(poll_seconds)

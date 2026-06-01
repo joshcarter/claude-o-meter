@@ -78,7 +78,7 @@ def test_resets_drawn_in_render_frame():
     try:
         cfg = load_config()
         surf = pygame.Surface((layout.SCREEN_W, layout.SCREEN_H))
-        snap = Snapshot(stale=False, last_update=1, five_hour_resets_at=1_780_000_000,
+        snap = Snapshot(last_update=1, five_hour_resets_at=1_780_000_000,
                         seven_day_resets_at=1_780_500_000)
         render.render_frame(surf, snap, cfg)
         # "7 Day Reset" label sits near (11, 12); expect blue ink in that band.

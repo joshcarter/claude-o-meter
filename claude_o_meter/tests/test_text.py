@@ -12,7 +12,7 @@ import pygame  # noqa: E402
 
 from claude_o_meter import layout, render  # noqa: E402
 from claude_o_meter.config import load_config  # noqa: E402
-from claude_o_meter.faults import MSG_NEEDS_AUTH  # noqa: E402
+from claude_o_meter.faults import ERR_AUTH  # noqa: E402
 from claude_o_meter.state import Snapshot  # noqa: E402
 
 
@@ -55,7 +55,7 @@ def test_bottom_shows_fault_in_project_blue():
     pygame.init()
     try:
         surf = _alpha_surface()
-        render.draw_bottom(surf, MSG_NEEDS_AUTH)
+        render.draw_bottom(surf, ERR_AUTH)
         ink = surf.get_bounding_rect()
         assert ink.height > 0                                  # something was drawn
         assert abs(ink.top - layout.BOTTOM_TEXT_POS[1]) <= 1   # cap top at the anchor y
@@ -91,8 +91,8 @@ def test_render_frame_draws_fault_message():
                         return True
             return False
 
-        fault = Snapshot(stale=True, last_update=0)                   # NO DATA
-        healthy = Snapshot(stale=False, last_update=1, balance=7.5)
+        fault = Snapshot(last_update=0)                               # No Data
+        healthy = Snapshot(last_update=1, balance=7.5)
         # The fault message lands at the left of the bottom strip.
         assert blue_in(fault, 10, 200)
         # When healthy, money fills the far-right Balance column; a fault leaves
