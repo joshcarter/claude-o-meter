@@ -6,20 +6,35 @@ TD-1 (single app skeleton polling in-process on the Mac) → TD-12 (capture the 
 money feeds into the snapshot) → TD-2 (assets) → TD-3 (pygame instrument cluster
 in a 480×320 window) → TD-4 (Pi 3 + PiTFT deployment, one systemd service).
 
-- [ ] TD-2 Prepare display assets for the dimming-rectangle render model
+- [x] TD-2 Prepare display assets for the dimming-rectangle render model
   New model: **one "all-segments-lit" bitmap per instrument**, darkened by dim
   rectangles. Drops the old 21-frame PNG export entirely. Art source =
   `graphics/*.afdesign`; fonts named in `pyportal/README.md`. Exact pixel
   dimensions / segment-boundary coordinates pending (see TODO.md "Pending input").
-  - [ ] TD-2.1 Export one full-on bitmap for the **horizontal 20-segment tach bar**
+  Delivered as a **single combined `claude_o_meter/assets/background.png`**
+  (480×320, all instruments lit in one bitmap) rather than three separate
+  per-instrument exports — a simplification by the art. Loaded via
+  `claude_o_meter/assets.py`. NOTE: the tach is a **curved arc**, not a straight
+  horizontal bar — the single-rectangle `reveal_segments` h-variant won't dim it
+  cleanly; per-segment dimming is a TD-3.4 design question (segment coords still
+  pending).
+  - [x] TD-2.1 Export one full-on bitmap for the **horizontal 20-segment tach bar**
         (blue/yellow/red bands as today) into `claude_o_meter/assets/`.
-  - [ ] TD-2.2 Export one full-on bitmap for the **vertical 20-segment fuel gauge**.
-  - [ ] TD-2.3 Export the **warning lights** in their lit state — "low fuel" and
+        Delivered lit within the combined `background.png` (curved-arc form).
+  - [x] TD-2.2 Export one full-on bitmap for the **vertical 20-segment fuel gauge**.
+        Delivered lit within the combined `background.png`.
+  - [x] TD-2.3 Export the **warning lights** in their lit state — "low fuel" and
         "check engine" — to be dimmed-when-off via the same overlay mechanism.
-  - [ ] TD-2.4 Place the two fonts as TTF/OTF in `claude_o_meter/assets/fonts/`
+        Delivered lit within the combined `background.png`.
+  - [x] TD-2.4 Place the two fonts as TTF/OTF in `claude_o_meter/assets/fonts/`
         (DESG7Modern-Italic for the 0–99 readout + dollar amounts; Dogica-Pixel
         for labels / messages / reset times). Sizes pending pixel spec. Drop the
         `otf2bdf` step.
+        Done: DSEG7 Modern **Mini Italic** (0–99 readout) + Modern **Mini Bold
+        Italic** (dollar amounts + reset date/time); **Roboto Condensed Bold
+        Italic** substitutes for Dogica-Pixel (labels). Non-Mini DSEG7 Modern
+        faces kept as alternates. Each family kept with its SIL OFL license;
+        web formats dropped. Provisional sizes in `layout.py`.
 
 - [ ] TD-3 Build the pygame display half (`claude_o_meter/`) — the full instrument cluster
   Port pure logic verbatim; delete all ESP32/WiFi code. Runs in the same process

@@ -14,6 +14,21 @@ SCREEN_W = 480
 SCREEN_H = 320
 FPS = 30
 
+# --- Assets (under assets/ — see assets/fonts/README.md) --------------------
+# The all-segments-lit cluster bitmap that the dim rectangles darken.
+BACKGROUND = "background.png"
+
+# Fonts (in assets/fonts/). Files chosen per the cluster design. The non-Mini
+# DSEG7 Modern faces are kept in assets/fonts/ as alternates.
+FONT_READOUT = "DSEG7ModernMini-Italic.ttf"        # 0–99 tach readout
+FONT_MONEY = "DSEG7ModernMini-BoldItalic.ttf"      # dollar amounts + reset date/time
+FONT_LABEL = "RobotoCondensed-BoldItalic.ttf"      # labels / messages
+
+# Provisional font sizes (px) — exact sizes pending the art spec.
+READOUT_SIZE = 64
+MONEY_SIZE = 22
+LABEL_SIZE = 16
+
 # Dimming-rectangle default opacity (0–255). 212 ≈ 83%, matches the PyPortal
 # ghost. config.toml's DIM_OPACITY overrides this per-deployment at the call site.
 DIM_DEFAULT_OPACITY = 212
