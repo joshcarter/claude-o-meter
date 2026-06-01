@@ -95,7 +95,7 @@ MONEY_POINT_OFF = (54, 15)
 MONEY_LABEL_OFF = (95, 5)
 MONEY_DOLLAR_PT = 15
 MONEY_VALUE_PT = 20
-MONEY_POINT_PT = 32
+MONEY_POINT_PT = 25
 MONEY_LABEL_PT = 15
 
 # (label, group top-left, Snapshot field). Drawn when there is no active fault.
@@ -115,12 +115,12 @@ RESET_7D_LABEL_POS = (11, 12)     # "7 Day Reset"
 RESET_7D_DATE_POS = (11, 30)      # "YYYY  MM  DD" over "8888  88  88"
 RESET_5H_LABEL_POS = (11, 71)     # "5 Hour Reset"
 RESET_5H_TIME_POS = (11, 88)      # "HH:MM" over "88:88"
-DASH_1_POS = (77, 39)
-DASH_2_POS = (77, 118)
+DASH_1_POS = (76, 39)
+DASH_2_POS = (116, 39)
 FUEL_LABEL_POS = (422, 36)        # "7 Day" — labels the fuel gauge
 RESET_LABEL_PT = 15
 RESET_FIELD_PT = 20
-DASH_PT = 15
+DASH_PT = 20
 DATE_GHOST = "8888  88  88"
 TIME_GHOST = "88:88"
 
