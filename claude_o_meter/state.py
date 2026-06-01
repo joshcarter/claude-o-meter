@@ -16,6 +16,10 @@ class Snapshot:
     seven_day_redline_ratio: Optional[float] = None
     seven_day_opus_pct: Optional[float] = None
     seven_day_opus_resets_at: Optional[int] = None
+    extra_usage_used: Optional[float] = None    # USD
+    extra_usage_limit: Optional[float] = None   # USD
+    extra_usage_enabled: Optional[bool] = None
+    balance: Optional[float] = None             # USD prepaid credit balance
     stale: bool = True
     auth_failed: bool = False
     last_update: int = 0

@@ -16,6 +16,10 @@ SEVEN_DAY_BURN_BASELINE = 3 * 3600  # 7d utilization moves slowly; a 30-min delt
 FIVE_HOUR_BURN_WINDOW = 30 * 60  # regression window for the 5h burn rate
 FIVE_HOUR_BURN_MIN_SPAN = 10 / 60  # hours of spread required before a slope is trusted
 MAX_REDLINE_RATIO = 10.0
+BALANCE_POLL_EVERY = 5  # fetch balance every N usage polls
+
+_extra_usage_nonzero_logged = False
+_currency_warned: set[str] = set()
 
 
 def _session_key() -> str:
@@ -27,6 +31,23 @@ def _session_key() -> str:
 
 def _poll_interval() -> int:
     return int(os.environ.get("POLL_INTERVAL_SECONDS", "60"))
+
+
+def _parse_cents_usd(raw) -> Optional[float]:
+    """Convert a cents value (int or float) to USD. Returns None if raw is None."""
+    if raw is None:
+        return None
+    return float(raw) / 100.0
+
+
+def _currency_ok(value: Optional[str], label: str) -> bool:
+    """Return True if currency is USD or absent. Log once per unexpected currency."""
+    if value is None or value == "USD":
+        return True
+    if value not in _currency_warned:
+        _currency_warned.add(value)
+        log.warning("%s: currency %r is not USD — value treated as unavailable (TD-13)", label, value)
+    return False
 
 
 async def _fetch_org_id(session: AsyncSession) -> Optional[str]:
@@ -43,6 +64,24 @@ async def _fetch_org_id(session: AsyncSession) -> Optional[str]:
     if not orgs:
         raise ValueError("No organizations returned")
     return orgs[0]["uuid"]
+
+
+async def _fetch_balance(session: AsyncSession, org_id: str) -> Optional[float]:
+    """Fetch prepaid credit balance. Returns USD float or None. Raises on transient errors."""
+    resp = await session.get(
+        f"{CLAUDE_BASE}/api/organizations/{org_id}/prepaid/credits",
+        cookies={"sessionKey": _session_key()},
+        timeout=15,
+    )
+    if resp.status_code == 404:
+        return None
+    resp.raise_for_status()
+    data = resp.json()
+    if not data:
+        return None
+    if not _currency_ok(data.get("currency"), "balance"):
+        return None
+    return _parse_cents_usd(data.get("amount"))
 
 
 def _burn_rate(rows: list[tuple[int, float]], min_dt_hours: float) -> float:
@@ -108,9 +147,12 @@ def _redline(
 async def polling_loop(store: Store) -> None:
     from . import state
 
+    global _extra_usage_nonzero_logged
+
     interval = _poll_interval()
     backoff = interval
     auth_incident_notified = False
+    balance_poll_counter = 0
 
     async with AsyncSession(impersonate="chrome124") as session:
         while True:
@@ -188,6 +230,22 @@ async def polling_loop(store: Store) -> None:
                     state.snapshot.seven_day_opus_resets_at = (
                         _iso_to_unix(sdo["resets_at"]) if sdo else None
                     )
+
+                    # TD-12.1 + TD-12.3: parse extra_usage from usage response
+                    eu = data.get("extra_usage") or {}
+                    if _currency_ok(eu.get("currency"), "extra_usage"):
+                        raw_used = eu.get("used_credits")
+                        if raw_used is not None and float(raw_used) != 0.0 and not _extra_usage_nonzero_logged:
+                            log.info("extra_usage.used_credits first nonzero raw: %s (assumed cents)", raw_used)
+                            _extra_usage_nonzero_logged = True
+                        state.snapshot.extra_usage_used = _parse_cents_usd(raw_used)
+                        state.snapshot.extra_usage_limit = _parse_cents_usd(eu.get("monthly_limit"))
+                        state.snapshot.extra_usage_enabled = eu.get("is_enabled")
+                    else:
+                        state.snapshot.extra_usage_used = None
+                        state.snapshot.extra_usage_limit = None
+                        state.snapshot.extra_usage_enabled = None
+
                     state.snapshot.stale = False
                     state.snapshot.auth_failed = False
                     state.snapshot.last_update = now
@@ -201,6 +259,15 @@ async def polling_loop(store: Store) -> None:
                         seven_pct,
                         _fmt_ratio(seven_ratio),
                     )
+
+                    # TD-12.2: slow-cadence balance fetch
+                    balance_poll_counter += 1
+                    if balance_poll_counter >= BALANCE_POLL_EVERY and state.org_id is not None:
+                        balance_poll_counter = 0
+                        try:
+                            state.snapshot.balance = await _fetch_balance(session, state.org_id)
+                        except Exception as exc:
+                            log.warning("Balance fetch failed (non-fatal): %s", exc)
 
                 except (KeyError, ValueError, TypeError) as exc:
                     log.error("Unexpected response shape: %s — raw: %.500s", exc, resp.text)

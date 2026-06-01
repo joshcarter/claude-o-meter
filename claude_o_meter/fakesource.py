@@ -34,6 +34,14 @@ async def fake_loop(poll_seconds: int = 60) -> None:
         state.snapshot.seven_day_burn_rate = seven_burn
         state.snapshot.seven_day_sustainable_rate = seven_sustainable
         state.snapshot.seven_day_redline_ratio = min(seven_burn / seven_sustainable, 10.0)
+
+        # TD-12.5: oscillate money fields so the display can be developed offline
+        extra_used = 5.0 + 5.0 * math.sin(2 * math.pi * phase + 2.0)   # $0–$10
+        state.snapshot.extra_usage_used = round(extra_used, 2)
+        state.snapshot.extra_usage_limit = 20.0
+        state.snapshot.extra_usage_enabled = True
+        state.snapshot.balance = round(100.0 + 20.0 * math.sin(2 * math.pi * phase + 0.5), 2)
+
         state.snapshot.stale = False
         state.snapshot.auth_failed = False
         state.snapshot.last_update = now
