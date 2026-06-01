@@ -31,9 +31,12 @@ in a 480×320 window) → TD-4 (Pi 3 + PiTFT deployment, one systemd service).
         boundaries) to the package. `main.py` opens a 480×320 window and runs the
         pygame loop on the main thread, reading the shared `state.snapshot` each
         frame.
-  - [ ] TD-3.2 Port pure helpers verbatim from `code.py`: `tach_position()`,
+  - [x] TD-3.2 Port pure helpers verbatim from `code.py`: `tach_position()`,
         `fmt_hhmm()`, `fmt_duration()`, `_clamp01()`. Tach keeps the `redline_ratio`
         mapping and knobs (`REDLINE_FRAME`, `BLUE_EXPONENT`, `RED_FULL_RATIO`).
+        Done in `claude_o_meter/gauges.py` (pygame-free); `fmt_hhmm` takes an
+        explicit `utc_offset_hours` arg (was a module global). 9 unit tests in
+        `tests/test_gauges.py`.
   - [ ] TD-3.3 Dimming primitive: a reusable "reveal N of M segments" helper that
         blits a full-on bitmap then a black `SRCALPHA` rectangle whose edge **snaps
         to a segment boundary**. Right-pinned (horizontal) and top-pinned (vertical)
