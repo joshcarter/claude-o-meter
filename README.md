@@ -1,4 +1,4 @@
-# Claude Usage Dashboard
+# Claude-o-meter
 
 Physical desk display showing Claude Pro/Max rate-limit burn rate on an Adafruit PyPortal.
 

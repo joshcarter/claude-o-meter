@@ -2,25 +2,30 @@
 
 **Last updated:** 2026-06-01
 
-Index for the PyPortal → Raspberry Pi 3 conversion + display redesign. Work
-tracked across split files; read in priority order.
+Index for the **claude-o-meter** build: a single-process pygame dashboard,
+developed desktop-first and later deployed to a Raspberry Pi 3. Work tracked
+across split files; read in priority order.
 
 <!-- next-td: TD-14 -->
 
 ## Project
 
-Port the Claude usage dashboard off the Adafruit PyPortal (CircuitPython) onto
-an **all-in-one Raspberry Pi 3** running two systemd services:
+Build **claude-o-meter**, one Python program that does *both* the polling and
+the display — no second service, no HTTP seam between them. It reuses the
+existing `server/src/` polling logic (curl_cffi, `polling_loop`) on a background
+thread that writes the in-memory `state.snapshot`; the **pygame** main loop reads
+that snapshot directly and renders the instrument cluster.
 
-- `claude-poller` — the existing `server/` code, extended to capture extra-usage
-  and prepaid-balance feeds (FastAPI + curl_cffi).
-- `claude-display` — a new **pygame** client replacing `pyportal/code.py`.
-
-The HTTP API (`/status`) is the fixed seam between them.
+Bring-up order is **desktop-first**: develop the whole app on this Mac in a
+**480×320 pygame window** (no Pi, no cookie required — a config-selected fake
+data source drives the gauges), then deploy the same program to the Pi 3 driving
+the PiTFT panel. **Desktop operation stays a supported, first-class target going
+forward**, not just a dev convenience.
 
 ## Display design (the instrument cluster)
 
-A 480×320 "dashboard" where a single full-on bitmap per instrument is selectively
+A 480×320 "dashboard" (a desktop window now, the PiTFT panel later — same
+dimensions) where a single full-on bitmap per instrument is selectively
 darkened by **dimming rectangles** (black `SRCALPHA`, ~83% ≈ current ghost),
 with the dim edge **snapped to segment boundaries**. Widgets:
 
@@ -37,6 +42,14 @@ with the dim edge **snapped to segment boundaries**. Widgets:
 
 ### Locked decisions
 
+- **One process, not two.** Polling and display live in the same program
+  (`claude-o-meter`). The poll loop runs on a background thread and publishes the
+  in-memory `state.snapshot`; the pygame loop reads it directly. No FastAPI, no
+  `/status` HTTP call, no `mock_server`.
+- **Desktop-first and desktop-supported.** Primary dev + a permanent run target
+  is a 480×320 pygame window on a desktop (macOS now). The Pi 3 + PiTFT is a
+  second deployment of the same code, not a different program. Offline dev uses a
+  config-selected fake data source — no live cookie or network needed.
 - Tach = burn-rate/`redline_ratio` (NOT raw utilization); current non-linear
   scaling kept. Fuel = linear 7d remaining. Two windows, two instrument types.
 - All money fields are **cents** → divide by 100. `monthly_limit` (2000=$20) and
@@ -58,13 +71,13 @@ module and fill values when provided.
 
 | File | Holds |
 |------|-------|
-| `TODO_CRITICAL.md` | Core path to a working Pi 3 dashboard. Work here first. |
+| `TODO_CRITICAL.md` | Core path to a working dashboard (desktop first, then Pi 3). Work here first. |
 | `TODO_BACKLOG.md`  | Enhancements once the core path runs end-to-end. |
 | `TODO_DEFERRED.md` | Alternatives not chosen / blocked on input. Not read during automated refine. |
 | `DONE.md`          | Completed TD trees, dated. |
 
 ## Triage table (where new TDs go)
 
-- Blocks a working end-to-end dashboard on the Pi 3 → `TODO_CRITICAL.md`
+- Blocks a working end-to-end dashboard (desktop window first, then Pi 3) → `TODO_CRITICAL.md`
 - Improves a working dashboard → `TODO_BACKLOG.md`
 - Rejected approach, or blocked on external input/hardware → `TODO_DEFERRED.md`
