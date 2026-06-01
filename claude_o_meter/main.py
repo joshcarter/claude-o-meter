@@ -43,7 +43,9 @@ def _start_poll_source(cfg):
 
     if cfg.data_source == "fake":
         from .fakesource import fake_loop
-        return _start_poll_thread(lambda: fake_loop(cfg.poll_seconds))
+        # The fake source ticks on its own fast interval (not the poll cadence)
+        # so the desktop demo animates smoothly.
+        return _start_poll_thread(fake_loop)
 
     raise ValueError(f"Unknown DATA_SOURCE: {cfg.data_source!r}")
 

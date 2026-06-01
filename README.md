@@ -31,7 +31,18 @@ python3 -m venv .venv
 ```
 
 A 480×320 window opens and the gauges oscillate on a demo cycle — no network or
-cookie required. This is the renderer development loop.
+cookie required. This is the renderer development loop. It runs until you close
+the window (or Ctrl-C). Every widget is exercised over the cycle: the tach and
+fuel gauge sweep their full range every 5 minutes, the low-fuel and check-engine
+lights blink on near each crest, and the fault message rotates through No Data →
+Auth → Connection → Stale across successive cycles.
+
+To eyeball every state quickly instead of waiting out the cycle, run the reveal
+demo — it steps through the tach, fuel, both lights, then the fault messages:
+
+```bash
+.venv/bin/python -m claude_o_meter.demo_reveal       # optional ms/step, e.g. 300
+```
 
 ## Live mode (real usage)
 

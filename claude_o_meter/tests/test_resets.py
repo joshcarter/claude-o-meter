@@ -85,7 +85,8 @@ def test_resets_drawn_in_render_frame():
         blue = False
         for y in range(10, 28):
             for x in range(11, 110):
-                r, _, b = surf.get_at((x, y))[:3]
+                px = surf.get_at((x, y))
+                r, b = px[0], px[2]
                 if b > 150 and b > r * 2:
                     blue = True
         assert blue

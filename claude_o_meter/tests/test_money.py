@@ -68,7 +68,8 @@ def test_render_frame_shows_money_when_healthy():
         def has_blue(x0, x1):
             for y in range(285, layout.SCREEN_H):
                 for x in range(x0, x1):
-                    r, _, b = surf.get_at((x, y))[:3]
+                    px = surf.get_at((x, y))
+                    r, b = px[0], px[2]
                     if b > 150 and b > r * 2:
                         return True
             return False
@@ -90,7 +91,8 @@ def test_render_frame_hides_money_on_fault():
         balance_blue = False
         for y in range(285, layout.SCREEN_H):
             for x in range(328, 448):
-                r, _, b = surf.get_at((x, y))[:3]
+                px = surf.get_at((x, y))
+                r, b = px[0], px[2]
                 if b > 150 and b > r * 2:
                     balance_blue = True
         assert not balance_blue

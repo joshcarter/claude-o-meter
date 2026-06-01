@@ -130,10 +130,23 @@ in a 480×320 window) → TD-4 (Pi 3 + PiTFT deployment, one systemd service).
         top-left at (10,296). Text is anchored by font line-box metrics (not ink)
         via `draw_text`, so every message shares one baseline; positions are given
         as the Affinity top-left (72 DPI → pt = px). (No wifi code to delete.)
-  - [ ] TD-3.9 Verify on the Mac (windowed 480×320, `fake` source): tach, fuel
+  - [x] TD-3.9 Verify on the Mac (windowed 480×320, `fake` source): tach, fuel
         gauge, both lights, money/reset readouts, and the check-engine fault
         overlay all animate through the fake source's cycles. This is the
         desktop-supported run target, not just a test.
+        Done: the fake source couldn't drive every widget (7-day % topped out at
+        60 so the low-fuel light never lit; `error` was always None so the
+        check-engine light/message never showed; the loop slept the 60s poll
+        cadence so the gauges barely moved). Reworked `fakesource.py` into a pure
+        `fake_values(elapsed, now)` (swept fields) + a thin `fake_loop` ticking
+        every `TICK_SECONDS` (0.2s) so the window animates; widened the 7-day
+        sweep to 5..95 (crosses the 80% low-fuel threshold) and added a per-cycle
+        fault window rotating None→No Data / Auth / Connection / Stale. `main`
+        now starts `fake_loop()` on its own tick (not the poll cadence). Verified
+        three ways: `tests/test_fakesource.py` sweeps a full set of cycles and
+        asserts every widget/light/fault is exercised; a headless render of
+        representative phases to PNG was eyeballed (tach gradient, fuel drain,
+        both lights toggling, money row, and each fault message all correct).
 
 - [ ] TD-4 Pi 3 + PiTFT 480×320 deployment — one systemd service
   The same program, now on hardware. The fiddly phase. SDL2 dropped fbcon, so

@@ -86,7 +86,8 @@ def test_render_frame_draws_fault_message():
             render.render_frame(surf, snap, cfg)
             for y in range(layout.BOTTOM_TEXT_POS[1], layout.SCREEN_H):
                 for x in range(x0, x1):
-                    r, _, b = surf.get_at((x, y))[:3]
+                    px = surf.get_at((x, y))
+                    r, b = px[0], px[2]
                     if b > 120 and b > r * 2:        # project blue C_LIGHT
                         return True
             return False
