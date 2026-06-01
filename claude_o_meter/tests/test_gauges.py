@@ -7,6 +7,7 @@ from claude_o_meter.gauges import (
     _clamp01,
     fmt_duration,
     fmt_hhmm,
+    fuel_segments,
     tach_position,
 )
 
@@ -62,6 +63,26 @@ def test_tach_position_pegs_at_full_ratio():
     assert tach_position(RED_FULL_RATIO) == top
     # Beyond RED_FULL_RATIO it stays pinned at the top, never overshoots.
     assert tach_position(RED_FULL_RATIO * 3) == top
+
+
+def test_fuel_segments_full_and_empty():
+    assert fuel_segments(0) == 20.0     # no utilisation → full tank
+    assert fuel_segments(100) == 0.0    # fully utilised → empty
+    assert fuel_segments(None) == 20.0  # no data → reads full
+
+
+def test_fuel_segments_linear():
+    assert fuel_segments(50) == 10.0
+    assert fuel_segments(80) == 4.0     # util≥80 → ≤20% remaining (low-fuel)
+
+
+def test_fuel_segments_clamps_overrange():
+    assert fuel_segments(120) == 0.0    # over-utilised clamps to empty
+    assert fuel_segments(-10) == 20.0   # negative util clamps to full
+
+
+def test_fuel_segments_custom_count():
+    assert fuel_segments(50, segments=10) == 5.0
 
 
 def test_tach_position_monotonic():

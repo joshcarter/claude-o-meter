@@ -21,13 +21,27 @@ def test_render_frame_draws_background():
     try:
         surface = pygame.Surface((layout.SCREEN_W, layout.SCREEN_H))
         surface.fill((123, 45, 67))
-        render.render_frame(surface, Snapshot(), load_config())
+        # Full-scale snapshot: tach pegged (no tach dim), tank full (no fuel dim),
+        # so the lit cluster bitmap shows through unchanged.
+        snap = Snapshot(five_hour_redline_ratio=2.0, seven_day_pct=0.0)
+        render.render_frame(surface, snap, load_config())
         bg = assets.load_image(layout.BACKGROUND)
-        # The cluster bitmap is blitted whole: black corners and the lit blue
-        # tach band both match the source art.
         assert surface.get_at((0, 0))[:3] == (0, 0, 0)
         assert surface.get_at((240, 40))[:3] == bg.get_at((240, 40))[:3]
         assert surface.get_at((240, 40))[:3] == layout.C_LIGHT
+    finally:
+        pygame.quit()
+
+
+def test_render_frame_dims_when_empty():
+    import pygame
+
+    pygame.init()
+    try:
+        surface = pygame.Surface((layout.SCREEN_W, layout.SCREEN_H))
+        # No data → tach 0 lit, so the lit blue band at (240,40) is dimmed.
+        render.render_frame(surface, Snapshot(), load_config())
+        assert surface.get_at((240, 40))[:3] != layout.C_LIGHT
     finally:
         pygame.quit()
 

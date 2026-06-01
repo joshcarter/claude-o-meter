@@ -46,6 +46,16 @@ def _clamp01(x):
     return 0.0 if x < 0.0 else (1.0 if x > 1.0 else x)
 
 
+def fuel_segments(utilization, segments=20):
+    """Remaining-fuel segment position: clamp(100 − utilization, 0, 100) mapped
+    linearly onto ``segments``. Returns a float 0..segments (caller rounds to a
+    whole segment). ``None`` utilisation is treated as 0 (tank reads full)."""
+    if utilization is None:
+        utilization = 0.0
+    remaining = max(0.0, min(100.0, 100.0 - utilization))
+    return remaining / 100.0 * segments
+
+
 def tach_position(ratio):
     # 5H redline_ratio -> continuous gauge position, 0.0 .. TACH_FRAMES-1.
     # Concave below the redline (sensitive at low use), linear above it.

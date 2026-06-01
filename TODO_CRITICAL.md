@@ -61,15 +61,24 @@ in a 480×320 window) → TD-4 (Pi 3 + PiTFT deployment, one systemd service).
         blits a full-on bitmap then a black `SRCALPHA` rectangle whose edge **snaps
         to a segment boundary**. Right-pinned (horizontal) and top-pinned (vertical)
         variants. Opacity tunable, default alpha≈212 (~83%, matches current ghost).
-        Done: `render.reveal_segments(surface, rect, lit, total, opacity,
-        orientation)` — `h-right`/`v-top`, fractional `lit` rounds to a segment
-        boundary, default opacity = `layout.DIM_DEFAULT_OPACITY` (212). 7 tests in
-        `tests/test_dimming.py`.
+        Done: superseded by explicit-geometry helpers once Josh supplied the real
+        coordinates — `render.dim_rect(surface, rect, opacity)` (low-level) plus
+        `dim_tach`/`dim_fuel` reading per-instrument geometry from `layout.py`.
+        Fractional lit rounds to a segment boundary; opacity from `config.toml`'s
+        `DIM_OPACITY`. Tests in `tests/test_dimming.py`.
   - [ ] TD-3.4 Horizontal tach bar + 0–99 readout: segment count and number both
         driven by `redline_ratio` via `tach_position()` (mirrors `update_tach`).
         Number = DESG7 font, dark "88" ghost + live value overlay.
-  - [ ] TD-3.5 Vertical fuel gauge: `fuel = clamp(100 − seven_day.utilization, 0,
+        **Bar dimming done** — `render.dim_tach` driven by `tach_position(5h
+        redline_ratio)`, geometry (left0=10, pitch=20, y 16..286, right=403) in
+        `layout.py`; wired into `render_frame`. The 0–99 numeric readout still
+        pending its on-screen position/size.
+  - [x] TD-3.5 Vertical fuel gauge: `fuel = clamp(100 − seven_day.utilization, 0,
         100)`, quantized to 20 segments, draining top→bottom (top-pinned dim).
+        Done: `gauges.fuel_segments(utilization)` (pure, clamped, linear) →
+        `render.dim_fuel`, geometry (bottom0=220, pitch=8, x 422..456, top=63) in
+        `layout.py`; wired into `render_frame`. Verified via the reveal demo +
+        unit tests.
   - [ ] TD-3.6 Low-fuel light: lit when remaining ≤ 20% (`utilization ≥ 80`),
         else dimmed.
   - [ ] TD-3.7 Money + reset readouts: extra-use $, extra-limit $, balance $ (USD

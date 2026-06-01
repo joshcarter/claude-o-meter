@@ -39,25 +39,34 @@ C_DARK = (0x0B, 0x1D, 0x20)    # unlit "ghost" segments
 C_LIGHT = (0x40, 0xA9, 0xBF)   # lit segments / live readouts
 C_ERROR = (0xFF, 0x22, 0x00)   # fault text
 
-# --- Horizontal 20-segment tach bar (right-pinned dim) ----------------------
-# Reveals left→right; driven by 5h redline_ratio via gauges.tach_position().
+# --- 20-segment tach bar (right-pinned dim) ---------------------------------
+# The arc's bars are revealed left→right by a tall dim rectangle that spans the
+# full arc height (TACH_DIM_TOP..TACH_DIM_BOTTOM) and slides horizontally. Its
+# left edge sits at TACH_DIM_LEFT0 when fully dimmed (0 lit) and advances right
+# by TACH_PITCH per revealed segment; the right/top/bottom edges are fixed.
+# Driven by 5h redline_ratio via gauges.tach_position().
 TACH_SEGMENTS = 20
-TACH_X = 24
-TACH_Y = 40
-TACH_W = 432
-TACH_H = 48
+TACH_DIM_LEFT0 = 10     # dim left edge with 0 segments lit
+TACH_PITCH = 20         # px the left edge advances per lit segment
+TACH_DIM_TOP = 16
+TACH_DIM_RIGHT = 403
+TACH_DIM_BOTTOM = 286
 
 # --- Two-digit 0–99 readout (numeric form of the tach) ----------------------
 NUM_X = 200
 NUM_Y = 120
 
-# --- Vertical 20-segment fuel gauge (top-pinned dim, drains top→bottom) ------
-# remaining = clamp(100 − seven_day.utilization, 0, 100), linear.
+# --- Vertical 20-segment fuel gauge (top-pinned dim) ------------------------
+# remaining = clamp(100 − seven_day.utilization, 0, 100), linear. Lit segments
+# fill bottom→top; the dim rectangle is pinned at the top (FUEL_DIM_TOP) and its
+# bottom edge retreats upward as fuel is revealed: bottom edge at
+# FUEL_DIM_BOTTOM0 when fully dimmed (0 lit), rising by FUEL_PITCH per segment.
 FUEL_SEGMENTS = 20
-FUEL_X = 408
-FUEL_Y = 120
-FUEL_W = 48
-FUEL_H = 176
+FUEL_DIM_BOTTOM0 = 220  # dim bottom edge with 0 segments lit
+FUEL_PITCH = 8          # px the bottom edge retreats per lit segment
+FUEL_DIM_LEFT = 422
+FUEL_DIM_RIGHT = 456
+FUEL_DIM_TOP = 63
 
 # --- Warning lights ---------------------------------------------------------
 LOW_FUEL_X = 24
