@@ -317,7 +317,7 @@ async def polling_loop(store: Store) -> None:
                         except Exception as exc:
                             log.warning("Balance fetch failed (non-fatal): %s", exc)
 
-                except (KeyError, ValueError, TypeError) as exc:
+                except (KeyError, ValueError, TypeError, AttributeError) as exc:
                     log.error("Unexpected response shape: %s — raw: %.500s", exc, resp.text)
                     state.snapshot.error = faults.ERR_RESPONSE
 
@@ -329,7 +329,17 @@ async def polling_loop(store: Store) -> None:
             await asyncio.sleep(backoff)
 
 
-def _iso_to_unix(ts: str) -> int:
+def _iso_to_unix(ts: Optional[str]) -> Optional[int]:
+    """Parse an API ISO timestamp to unix seconds, or None when the field is null.
+
+    The API reports ``resets_at: null`` for a window with no recent usage — an
+    idle 5-hour window at startup, or an unused quota tier. ``_redline`` and the
+    reset readouts already treat None as "no reset to show" (blank/ghost), so we
+    propagate the null rather than crash. Without this guard the AttributeError
+    surfaced as a misleading "Connection Error".
+    """
+    if ts is None:
+        return None
     from datetime import datetime, timezone
     dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
     return int(dt.replace(tzinfo=timezone.utc).timestamp()) if dt.tzinfo is None else int(dt.timestamp())
