@@ -8,10 +8,17 @@ DATA_SOURCE = "fake"
 POLL_SECONDS = 60
 
 # UTC offset hours for the display clock (e.g. -7 for PDT). Used by the renderer (TD-3).
-UTC_OFFSET_HOURS = 0
+UTC_OFFSET_HOURS = -6
 
-# Display mode: "window" (480×320 SDL window on Mac) or "framebuffer" (Pi TFT, TD-4).
+# Display mode: "window" (480×320 SDL window on Mac) or "framebuffer" (Pi TFT).
+# Any key here can also be overridden by an environment variable of the same
+# name, so the Pi systemd service sets DISPLAY_MODE=framebuffer / DATA_SOURCE=live
+# without editing this file.
 DISPLAY_MODE = "window"
+
+# Framebuffer device for DISPLAY_MODE="framebuffer". The 3.5" PiTFT (hx8357d DRM
+# driver) comes up as /dev/fb1 at 480×320, 32bpp.
+FB_DEVICE = "/dev/fb1"
 
 # Dimming-rectangle opacity (0–255). 212 ≈ 83% matches the current ghost effect.
 DIM_OPACITY = 212

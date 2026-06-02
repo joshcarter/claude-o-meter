@@ -57,15 +57,30 @@ def run_display(cfg, max_frames=None):
     ``max_frames`` bounds the loop for headless verification/tests; ``None``
     runs until the window is closed. Honours ``SDL_VIDEODRIVER=dummy`` for
     headless runs (no window, no display required).
+
+    With ``DISPLAY_MODE = "framebuffer"`` (the Pi PiTFT) the surface is rendered
+    offscreen via the SDL ``dummy`` driver and copied to ``cfg.fb_device`` each
+    frame — no X server or window required on Raspberry Pi OS Lite.
     """
+    framebuffer_mode = cfg.display_mode == "framebuffer"
+    if framebuffer_mode:
+        os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
+        os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
+
     import pygame
 
     from . import render, state
 
     pygame.init()
+    fb = None
     try:
         surface = pygame.display.set_mode((layout.SCREEN_W, layout.SCREEN_H))
         pygame.display.set_caption("claude-o-meter")
+        if framebuffer_mode:
+            from .framebuffer import Framebuffer
+
+            fb = Framebuffer(cfg.fb_device, layout.SCREEN_W, layout.SCREEN_H)
+            log.info("Rendering to framebuffer %s", cfg.fb_device)
         clock = pygame.time.Clock()
 
         frames = 0
@@ -76,7 +91,10 @@ def run_display(cfg, max_frames=None):
                     running = False
 
             render.render_frame(surface, state.snapshot, cfg)
-            pygame.display.flip()
+            if fb is not None:
+                fb.blit(surface)
+            else:
+                pygame.display.flip()
             clock.tick(layout.FPS)
 
             frames += 1
@@ -84,6 +102,8 @@ def run_display(cfg, max_frames=None):
                 running = False
         return frames
     finally:
+        if fb is not None:
+            fb.close()
         pygame.quit()
 
 

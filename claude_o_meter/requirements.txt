@@ -4,6 +4,11 @@
 # Display
 pygame>=2.6
 
+# RGB565 framebuffer packing for the 16bpp PiTFT (claude_o_meter/framebuffer.py).
+# Vectorized pack keeps the per-frame conversion cheap at the panel's ~20fps.
+# Prebuilt aarch64 wheel on the Pi — no compile.
+numpy>=1.26
+
 # Live polling of claude.ai (curl_cffi mimics Chrome's TLS fingerprint past
 # Cloudflare via impersonate="chrome124"). Not needed when DATA_SOURCE=fake,
 # but it's a core runtime dep so it's pinned here. >=0.15 also gets the

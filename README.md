@@ -14,7 +14,7 @@ claude.ai/api/organizations/{id}/usage          (live mode only)
         ↓ curl_cffi, ~60s, background thread
 state.snapshot   (in-memory, single process)
         ↓ read each frame
-pygame 480×320 instrument cluster   (desktop window now, Pi 3 + PiTFT later)
+pygame 480×320 instrument cluster   (desktop window, or Pi 3 + PiTFT framebuffer)
 ```
 
 Bring-up is **desktop-first**: the whole app runs in a 480×320 window on macOS
@@ -66,7 +66,13 @@ in fake mode.
 | `POLL_SECONDS` | `60` | Poll cadence; in live mode it sets `POLL_INTERVAL_SECONDS` |
 | `UTC_OFFSET_HOURS` | `0` | Integer offset for displayed clock/date (e.g. `-7` for PDT) |
 | `DISPLAY_MODE` | `"window"` | `"window"` (SDL window on a desktop) or `"framebuffer"` (Pi TFT) |
+| `FB_DEVICE` | `"/dev/fb1"` | Framebuffer device when `DISPLAY_MODE="framebuffer"` |
 | `DIM_OPACITY` | `212` | Dimming-rectangle opacity 0–255 (212 ≈ 83% ghost) |
+
+**Any key above can also be set as an environment variable of the same name,
+which overrides the TOML.** The Pi service uses this to select
+`DISPLAY_MODE=framebuffer` / `DATA_SOURCE=live` without editing the committed
+`config.toml`.
 
 ### Live-mode environment variables
 
@@ -90,6 +96,87 @@ The secret and a few overrides come from the environment, not the TOML file:
 Expected re-auth cadence: every few weeks to months. When the cookie expires the
 cluster shows the check-engine light with a "needs auth" message at reduced
 brightness; refresh the cookie and restart.
+
+## Raspberry Pi 3 + PiTFT deployment
+
+The same program runs on a Raspberry Pi 3 driving a 3.5" PiTFT (480×320) panel
+as a single `systemd` service. There is no desktop or X server — the renderer
+writes frames straight to the panel's framebuffer (SDL `dummy` video driver).
+Verified on 64-bit Raspberry Pi OS Lite (Trixie).
+
+### 1. Enable the PiTFT panel (legacy framebuffer driver)
+
+Install Adafruit's PiTFT support, then make sure the panel uses the **legacy
+`fb_hx8357d` framebuffer driver — not the DRM variant.** In
+`/boot/firmware/config.txt` the overlay line must **not** contain `,drm`:
+
+```
+dtoverlay=pitft35-resistive,rotate=90,speed=20000000,fps=20
+```
+
+The `,drm` flag (which the Adafruit installer may add) forces the DRM/KMS
+driver, which leaves the SPI panel blank until a modeset and conflicts with
+`vc4-kms-v3d` — symptom: a white/blank screen and no console. Remove it and
+reboot:
+
+```bash
+sudo sed -i '/pitft35-resistive/ s/,drm,/,/' /boot/firmware/config.txt
+sudo reboot
+```
+
+After reboot, confirm the framebuffer:
+
+```bash
+cat /sys/class/graphics/fb1/name            # -> fb_hx8357d
+cat /sys/class/graphics/fb1/bits_per_pixel  # -> 16   (RGB565)
+cat /sys/class/graphics/fb1/virtual_size    # -> 480,320
+```
+
+The renderer auto-detects the depth (16bpp RGB565 here, 32bpp as a fallback);
+`numpy` packs each RGB565 frame.
+
+### 2. Clone and install
+
+```bash
+git clone ssh://git@github.com/joshcarter/claude-o-meter.git ~/claude-o-meter
+cd ~/claude-o-meter
+python3 -m venv .venv
+.venv/bin/pip install -r claude_o_meter/requirements.txt
+```
+
+`pygame`, `curl_cffi`, and `numpy` all install from prebuilt aarch64 wheels on
+64-bit Raspberry Pi OS — no compiler required.
+
+### 3. Session key
+
+```bash
+printf 'CLAUDE_SESSION_KEY=sk-ant-sid01-...\n' > ~/claude-o-meter/.env
+chmod 600 ~/claude-o-meter/.env
+```
+
+### 4. Install the service
+
+`deploy/claude-o-meter.service` assumes the repo at `/home/pi/claude-o-meter`,
+runs as user `pi`, and sets `DISPLAY_MODE=framebuffer` / `DATA_SOURCE=live` via
+the environment (so no `config.toml` edit is needed). The `pi` user must be in
+the `video` group to write `/dev/fb1` (the default on Raspberry Pi OS). Edit the
+unit if your path or user differs.
+
+```bash
+sudo cp ~/claude-o-meter/deploy/claude-o-meter.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now claude-o-meter
+systemctl status claude-o-meter --no-pager
+```
+
+`samples.db` is created under `/var/lib/claude-o-meter/` (systemd
+`StateDirectory`). Reboot once to confirm the dashboard comes up unattended:
+
+```bash
+sudo reboot
+```
+
+Logs: `journalctl -u claude-o-meter -f`.
 
 ## The instrument cluster
 

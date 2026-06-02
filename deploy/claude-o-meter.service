@@ -1,0 +1,27 @@
+[Unit]
+Description=claude-o-meter dashboard (polling + PiTFT display)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/claude-o-meter
+
+# Secrets and per-host settings. .env holds CLAUDE_SESSION_KEY (and optionally
+# CLAUDE_ORG_ID). DISPLAY_MODE/DATA_SOURCE are set here so the committed
+# config.toml needs no per-host edit (config.py lets env override TOML).
+EnvironmentFile=/home/pi/claude-o-meter/.env
+Environment=DATA_SOURCE=live
+Environment=DISPLAY_MODE=framebuffer
+
+# samples.db lives in /var/lib/claude-o-meter, created+owned by this service.
+StateDirectory=claude-o-meter
+Environment=DB_PATH=/var/lib/claude-o-meter/samples.db
+
+ExecStart=/home/pi/claude-o-meter/.venv/bin/python -m claude_o_meter
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
