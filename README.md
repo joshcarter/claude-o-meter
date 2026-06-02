@@ -138,7 +138,7 @@ The renderer auto-detects the depth (16bpp RGB565 here, 32bpp as a fallback);
 ### 2. Clone and install
 
 ```bash
-git clone ssh://git@github.com/joshcarter/claude-o-meter.git ~/claude-o-meter
+git clone https://github.com/joshcarter/claude-o-meter.git ~/claude-o-meter
 cd ~/claude-o-meter
 python3 -m venv .venv
 .venv/bin/pip install -r claude_o_meter/requirements.txt
