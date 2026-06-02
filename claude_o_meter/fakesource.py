@@ -84,6 +84,11 @@ def fake_values(elapsed, now):
             values["error"] = None
             values["last_update"] = now
             values["five_hour_warming_up"] = True
+            # Mirror the real poller exactly: with too little history _burn_rate
+            # returns None, so burn_rate AND the derived redline_ratio are both
+            # None. Leaving burn_rate a live float here would let the fake drive
+            # renderers down a path the live source never produces.
+            values["five_hour_burn_rate"] = None
             values["five_hour_redline_ratio"] = None   # tach reads 0 while warming
         else:
             values["error"] = cause

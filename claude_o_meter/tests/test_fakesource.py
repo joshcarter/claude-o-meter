@@ -54,3 +54,15 @@ def test_every_fault_message_appears_and_clears():
     assert faults.ERR_CONNECTION in msgs
     assert faults.ERR_STALE in msgs
     assert faults.MSG_WARMING_UP in msgs      # the _WARMING cause → collecting data
+
+
+def test_warming_state_matches_real_poller_contract():
+    """While warming, the real poller leaves five_hour_burn_rate AND
+    five_hour_redline_ratio None (too little history for a slope). The fake must
+    produce the same shape, or renderers tested offline take a path the live
+    source never emits."""
+    warming = [s for s in _snapshots() if s.five_hour_warming_up]
+    assert warming, "the sweep never reaches the warming state"
+    for s in warming:
+        assert s.five_hour_burn_rate is None
+        assert s.five_hour_redline_ratio is None

@@ -18,6 +18,7 @@ FIVE_HOUR_BURN_WINDOW = 30 * 60  # regression window for the 5h burn rate
 FIVE_HOUR_BURN_MIN_SPAN = 10 / 60  # hours of spread required before a slope is trusted
 MAX_REDLINE_RATIO = 10.0
 BALANCE_POLL_EVERY = 5  # fetch balance every N usage polls
+PRUNE_EVERY = 60  # prune aged rows ~hourly at the default 60s cadence (see below)
 
 _extra_usage_nonzero_logged = False
 _currency_warned: set[str] = set()
@@ -181,6 +182,7 @@ async def polling_loop(store: Store) -> None:
     # ~5 polls / minutes later, which would show $0.00 at startup); the every-N
     # slow cadence applies to subsequent fetches.
     balance_poll_counter = BALANCE_POLL_EVERY
+    prune_counter = 0
 
     async with AsyncSession(impersonate="chrome124") as session:
         while True:
@@ -240,7 +242,14 @@ async def polling_loop(store: Store) -> None:
                     opus_pct = float(sdo["utilization"]) if sdo else None
 
                     store.insert(now, five_pct, seven_pct, opus_pct)
-                    store.prune(now - 7 * 24 * 3600)
+                    # Prune is a DELETE — a write — and running it every poll is
+                    # needless SD-card churn. Batching to ~hourly drops ~98% of
+                    # the delete traffic; the table just carries up to PRUNE_EVERY
+                    # rows past the 7-day cap in between (a few KB, harmless).
+                    prune_counter += 1
+                    if prune_counter >= PRUNE_EVERY:
+                        prune_counter = 0
+                        store.prune(now - 7 * 24 * 3600)
 
                     five_resets = _iso_to_unix(fh["resets_at"])
                     seven_resets = _iso_to_unix(sd["resets_at"])
