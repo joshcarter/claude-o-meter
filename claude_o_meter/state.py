@@ -6,12 +6,15 @@ from typing import Optional
 class Snapshot:
     five_hour_pct: Optional[float] = None
     five_hour_resets_at: Optional[int] = None
-    five_hour_burn_rate: float = 0.0
+    five_hour_burn_rate: Optional[float] = None  # None = not enough history yet
     five_hour_sustainable_rate: Optional[float] = None
     five_hour_redline_ratio: Optional[float] = None
+    # True after a successful poll that still lacks enough samples for a 5h burn
+    # rate; drives the "collecting data" warm-up message instead of a 0 tach.
+    five_hour_warming_up: bool = False
     seven_day_pct: Optional[float] = None
     seven_day_resets_at: Optional[int] = None
-    seven_day_burn_rate: float = 0.0
+    seven_day_burn_rate: Optional[float] = None  # None = not enough history yet
     seven_day_sustainable_rate: Optional[float] = None
     seven_day_redline_ratio: Optional[float] = None
     seven_day_opus_pct: Optional[float] = None

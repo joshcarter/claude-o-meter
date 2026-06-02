@@ -24,7 +24,7 @@ def test_seven_day_burn_positive():
     store.insert(now,            56.0, 66.0, None)
 
     rate = _compute_seven_day_burn(store)
-    assert abs(rate - 2.0) < 1e-6  # 60 -> 66 over 3h
+    assert rate is not None and abs(rate - 2.0) < 1e-6  # 60 -> 66 over 3h
 
 
 def test_seven_day_burn_decaying():
@@ -37,13 +37,14 @@ def test_seven_day_burn_decaying():
 
 
 def test_seven_day_burn_baseline_too_short():
-    # 30-minute span is below the 1-hour minimum baseline — too noisy to trust.
+    # 30-minute span is below the 1-hour minimum baseline — too noisy to trust,
+    # so None (insufficient history), not a real 0.0.
     store = make_store()
     now = int(time.time())
     store.insert(now - 1800, 50.0, 60.0, None)
     store.insert(now,        50.0, 70.0, None)
 
-    assert _compute_seven_day_burn(store) == 0.0
+    assert _compute_seven_day_burn(store) is None
 
 
 def test_seven_day_burn_insufficient_data():
@@ -51,7 +52,7 @@ def test_seven_day_burn_insufficient_data():
     now = int(time.time())
     store.insert(now, 50.0, 60.0, None)
 
-    assert _compute_seven_day_burn(store) == 0.0
+    assert _compute_seven_day_burn(store) is None
 
 
 def test_redline_normal():
@@ -69,6 +70,14 @@ def test_redline_idle_when_burn_zero():
     sustainable, ratio = _redline(76.0, now + 48 * 3600, burn=0.0, now=now)
     assert sustainable is not None and sustainable > 0
     assert ratio == 0.0
+
+
+def test_redline_none_ratio_when_burn_unknown():
+    # burn=None (not enough history) → sustainable still known, ratio unknown.
+    now = int(time.time())
+    sustainable, ratio = _redline(76.0, now + 48 * 3600, burn=None, now=now)
+    assert sustainable is not None and sustainable > 0
+    assert ratio is None
 
 
 def test_redline_none_when_no_reset_time():

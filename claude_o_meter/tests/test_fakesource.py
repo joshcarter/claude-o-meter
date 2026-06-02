@@ -53,3 +53,4 @@ def test_every_fault_message_appears_and_clears():
     assert faults.ERR_AUTH in msgs
     assert faults.ERR_CONNECTION in msgs
     assert faults.ERR_STALE in msgs
+    assert faults.MSG_WARMING_UP in msgs      # the _WARMING cause → collecting data

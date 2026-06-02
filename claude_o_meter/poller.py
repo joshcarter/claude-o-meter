@@ -85,17 +85,22 @@ async def _fetch_balance(session: AsyncSession, org_id: str) -> Optional[float]:
     return _parse_cents_usd(data.get("amount"))
 
 
-def _burn_rate(rows: list[tuple[int, float]], min_dt_hours: float) -> float:
-    """Least-squares burn rate (pct/hour) across the sample window; 0.0 if decaying or too sparse.
+def _burn_rate(rows: list[tuple[int, float]], min_dt_hours: float) -> Optional[float]:
+    """Least-squares burn rate (pct/hour) across the sample window.
+
+    Returns ``None`` when there isn't enough history to compute a slope (fewer
+    than two samples, or a span shorter than ``min_dt_hours``) — distinct from
+    ``0.0``, which means a real flat or decaying burn. The caller surfaces the
+    ``None`` case as a "collecting data" warm-up state rather than a zero gauge.
 
     Uses every sample, not just the endpoints, so integer-quantized utilization
     readings average out instead of jolting the slope as steps age in and out.
     """
     if len(rows) < 2:
-        return 0.0
+        return None
 
     if (rows[-1][0] - rows[0][0]) / 3600 < min_dt_hours:
-        return 0.0
+        return None
 
     n = len(rows)
     t0 = rows[0][0]
@@ -105,21 +110,21 @@ def _burn_rate(rows: list[tuple[int, float]], min_dt_hours: float) -> float:
     mean_y = sum(ys) / n
     var_t = sum((t - mean_t) ** 2 for t in ts)
     if var_t == 0:
-        return 0.0
+        return None
 
     cov = sum((t - mean_t) * (y - mean_y) for t, y in zip(ts, ys))
     rate = cov / var_t
     return rate if rate > 0 else 0.0
 
 
-def _compute_five_hour_burn(store: Store) -> float:
+def _compute_five_hour_burn(store: Store) -> Optional[float]:
     return _burn_rate(
         store.recent_five_hour(int(time.time()) - FIVE_HOUR_BURN_WINDOW),
         FIVE_HOUR_BURN_MIN_SPAN,
     )
 
 
-def _compute_seven_day_burn(store: Store) -> float:
+def _compute_seven_day_burn(store: Store) -> Optional[float]:
     return _burn_rate(store.recent_seven_day(int(time.time()) - SEVEN_DAY_BURN_BASELINE), 1.0)
 
 
@@ -128,9 +133,13 @@ def _fmt_ratio(ratio: Optional[float]) -> str:
 
 
 def _redline(
-    pct: float, resets_at: Optional[int], burn: float, now: int
+    pct: float, resets_at: Optional[int], burn: Optional[float], now: int
 ) -> tuple[Optional[float], Optional[float]]:
-    """Return (sustainable pct/hour, redline_ratio) for a usage window; ratio 1.0 = redline."""
+    """Return (sustainable pct/hour, redline_ratio) for a usage window; ratio 1.0 = redline.
+
+    ``burn is None`` (not enough history) propagates to a ``None`` ratio — the
+    gauge reads "unknown / warming up", not zero.
+    """
     if resets_at is None:
         return None, None
     hours_to_reset = (resets_at - now) / 3600
@@ -138,6 +147,8 @@ def _redline(
         return None, None
 
     sustainable = max(0.0, (100.0 - pct) / hours_to_reset)
+    if burn is None:
+        return sustainable, None
     if burn <= 0:
         return sustainable, 0.0
     if sustainable <= 0:
@@ -166,7 +177,10 @@ async def polling_loop(store: Store) -> None:
     interval = _poll_interval()
     backoff = interval
     auth_incident_notified = False
-    balance_poll_counter = 0
+    # Start "due" so the balance is fetched on the first successful poll (not
+    # ~5 polls / minutes later, which would show $0.00 at startup); the every-N
+    # slow cadence applies to subsequent fetches.
+    balance_poll_counter = BALANCE_POLL_EVERY
 
     async with AsyncSession(impersonate="chrome124") as session:
         while True:
@@ -245,6 +259,8 @@ async def polling_loop(store: Store) -> None:
                     state.snapshot.five_hour_burn_rate = five_burn
                     state.snapshot.five_hour_sustainable_rate = five_sustainable
                     state.snapshot.five_hour_redline_ratio = five_ratio
+                    # No 5h burn yet (too few samples) → "collecting data" warm-up.
+                    state.snapshot.five_hour_warming_up = five_burn is None
                     state.snapshot.seven_day_pct = seven_pct
                     state.snapshot.seven_day_resets_at = seven_resets
                     state.snapshot.seven_day_burn_rate = seven_burn

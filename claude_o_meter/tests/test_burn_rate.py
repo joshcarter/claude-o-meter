@@ -18,7 +18,8 @@ def test_burn_rate_positive():
     store.insert(now - 900,  30.0, 55.0, None)
     store.insert(now,        40.0, 60.0, None)
 
-    assert _compute_five_hour_burn(store) > 0
+    rate = _compute_five_hour_burn(store)
+    assert rate is not None and rate > 0
 
 
 def test_burn_rate_decaying():
@@ -40,21 +41,22 @@ def test_burn_rate_flat():
 
 
 def test_burn_rate_insufficient_data():
+    # A single sample is not enough to compute a slope: None, not a real 0.0.
     store = make_store()
     now = int(time.time())
     store.insert(now, 40.0, 50.0, None)
 
-    assert _compute_five_hour_burn(store) == 0.0
+    assert _compute_five_hour_burn(store) is None
 
 
 def test_burn_rate_insufficient_span():
-    # Two samples a minute apart fall below the 10-minute span guard.
+    # Two samples a minute apart fall below the 10-minute span guard: None.
     store = make_store()
     now = int(time.time())
     store.insert(now - 60, 40.0, 50.0, None)
     store.insert(now,      41.0, 51.0, None)
 
-    assert _compute_five_hour_burn(store) == 0.0
+    assert _compute_five_hour_burn(store) is None
 
 
 def test_burn_rate_regression_uses_all_samples():
@@ -64,7 +66,8 @@ def test_burn_rate_regression_uses_all_samples():
     for i in range(31):
         store.insert(now - 1800 + i * 60, 0.2 * i, 50.0, None)
 
-    assert abs(_compute_five_hour_burn(store) - 12.0) < 0.5
+    rate = _compute_five_hour_burn(store)
+    assert rate is not None and abs(rate - 12.0) < 0.5
 
 
 def test_burn_rate_regression_resists_endpoint_noise():
@@ -76,4 +79,5 @@ def test_burn_rate_regression_resists_endpoint_noise():
         store.insert(now - 1800 + i * 60, 50.0, 50.0, None)
     store.insert(now, 53.0, 50.0, None)
 
-    assert _compute_five_hour_burn(store) < 2.0
+    rate = _compute_five_hour_burn(store)
+    assert rate is not None and rate < 2.0

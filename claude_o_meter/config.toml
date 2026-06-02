@@ -16,9 +16,10 @@ UTC_OFFSET_HOURS = -6
 # without editing this file.
 DISPLAY_MODE = "window"
 
-# Framebuffer device for DISPLAY_MODE="framebuffer". The 3.5" PiTFT (hx8357d DRM
-# driver) comes up as /dev/fb1 at 480×320, 32bpp.
+# Framebuffer device for DISPLAY_MODE="framebuffer". The 3.5" PiTFT (legacy
+# fb_hx8357d driver — see the README's Pi deployment) comes up as /dev/fb1 at
+# 480×320, 16bpp RGB565; the renderer auto-detects the depth.
 FB_DEVICE = "/dev/fb1"
 
 # Dimming-rectangle opacity (0–255). 212 ≈ 83% matches the current ghost effect.
-DIM_OPACITY = 212
+DIM_OPACITY = 180

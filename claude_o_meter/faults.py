@@ -23,14 +23,22 @@ ERR_STALE = "Data Stale"            # had data, now older than STALE_AFTER
 # Derived (no error set, but never polled successfully).
 MSG_NO_DATA = "No Data"
 
+# Derived: polled fine, but not enough history yet for a 5-hour burn rate, so
+# the tach would read a misleading 0. Shown until samples span the burn window.
+MSG_WARMING_UP = "Collecting Data"
+
 
 def fault_message(snapshot):
     """Return the fault message to display, or ``None`` when healthy.
 
-    An explicit error wins; otherwise a never-polled snapshot reads "No Data".
+    Priority: an explicit error wins; then a never-polled snapshot reads "No
+    Data"; then a polled-but-not-enough-history snapshot reads "Collecting
+    Data" (the 5h burn rate, hence the tach, isn't trustworthy yet).
     """
     if snapshot.error is not None:
         return snapshot.error
     if snapshot.last_update == 0:
         return MSG_NO_DATA
+    if getattr(snapshot, "five_hour_warming_up", False):
+        return MSG_WARMING_UP
     return None

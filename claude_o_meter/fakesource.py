@@ -17,10 +17,15 @@ from . import faults, state
 CYCLE_SECONDS = 300      # full oscillation period — a 5-minute sweep per gauge
 TICK_SECONDS = 0.2       # snapshot refresh — fast enough for smooth animation
 
+# Sentinel: the "collecting data" warm-up state (polled OK, but not enough
+# history for a 5h burn rate) — signalled by a flag, not an error string.
+_WARMING = object()
+
 # Causes the demo rotates through, one per cycle, during the fault window so the
 # check-engine light and each bottom message are seen offline. ``None`` is the
-# never-polled "No Data" state (error stays None, last_update 0).
-_FAULTS = (None, faults.ERR_AUTH, faults.ERR_CONNECTION, faults.ERR_STALE)
+# never-polled "No Data" state (error stays None, last_update 0); ``_WARMING`` is
+# the warm-up message.
+_FAULTS = (None, faults.ERR_AUTH, faults.ERR_CONNECTION, faults.ERR_STALE, _WARMING)
 
 # Fraction of each cycle (at the end) spent faulted: the light blinks on as the
 # gauges crest, then clears as they sweep back down.
@@ -67,6 +72,7 @@ def fake_values(elapsed, now):
         "extra_usage_limit": 20.0,
         "extra_usage_enabled": True,
         "balance": round(100.0 + 20.0 * math.sin(2 * math.pi * phase + 0.5), 2),
+        "five_hour_warming_up": False,
     }
 
     if phase < _FAULT_FROM:                  # healthy: gauges + money readouts
@@ -74,9 +80,15 @@ def fake_values(elapsed, now):
         values["last_update"] = now
     else:                                    # fault window: light check-engine
         cause = _FAULTS[cycle % len(_FAULTS)]
-        values["error"] = cause
-        # None cause = never-polled "No Data"; a string = an active error.
-        values["last_update"] = 0 if cause is None else now
+        if cause is _WARMING:                # polled OK, just not enough history
+            values["error"] = None
+            values["last_update"] = now
+            values["five_hour_warming_up"] = True
+            values["five_hour_redline_ratio"] = None   # tach reads 0 while warming
+        else:
+            values["error"] = cause
+            # None cause = never-polled "No Data"; a string = an active error.
+            values["last_update"] = 0 if cause is None else now
     return values
 
 
