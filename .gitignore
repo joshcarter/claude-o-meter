@@ -8,3 +8,10 @@ dist/
 .claude
 .mcp.json
 
+# Sample API responses (local fixtures, not part of the app)
+sample-usage.json
+sample-prepaid-credits.json
+
+# Generated code-review output
+reviews/
+

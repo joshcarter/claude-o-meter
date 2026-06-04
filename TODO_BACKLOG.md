@@ -26,24 +26,3 @@ desktop window, then on the Pi 3.
   `claude.ai/api/.../usage` AND `/prepaid/credits`. If yes, dropping curl_cffi
   removes native-wheel concerns. If 403, keep it. Nice-to-have, NOT a dependency
   of TD-1/TD-12 — the fingerprint rejection is why it was chosen and can regress.
-
-- [ ] TD-8 Retire PyPortal / two-service artifacts once the new path is proven
-  Only after TD-1..TD-4 are confirmed working (desktop, then hardware). Move,
-  don't delete prematurely — keep `graphics/*.afdesign` as art source-of-truth,
-  and keep the polling logic (now relocated into `claude_o_meter/`).
-  - [ ] TD-8.1 Remove `pyportal/` (code.py, bmp/, fonts/, requirements.txt, settings).
-  - [ ] TD-8.2 Remove `graphics/png_to_bmp.py` (BMP conversion no longer needed).
-  - [ ] TD-8.3 Remove the FastAPI/HTTP shell once its logic lives in
-        `claude_o_meter/`: `server/src/main.py`, `server/src/api.py`,
-        `server/Dockerfile`, `server/docker-compose.yml`, `tests/test_api_shape.py`
-        (replaced by the single systemd service in TD-4.4 and the in-process
-        snapshot). Keep the poller/state/store tests.
-  - [ ] TD-8.4 Update top-level `README.md` architecture diagram + quick-start to
-        the single `claude-o-meter` program, the desktop-window run mode, the Pi 3
-        deployment, and the new instrument cluster.
-
-- [ ] TD-9 Desktop dev loop documentation
-  Capture the develop-on-desktop workflow (set `DATA_SOURCE=fake` in
-  `config.toml`, run `python -m claude_o_meter`, windowed 480×320 SDL) in
-  `claude_o_meter/README.md` so the renderer can be iterated without a Pi or a
-  live cookie.

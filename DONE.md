@@ -2,6 +2,53 @@
 
 Completed TD trees, most recent first.
 
+## 2026-06-04 cleanup
+
+- [x] TD-14 Add a project license (code + printed frame)
+  Split licensing, © 2026 Josh Carter: source code under **GPL-3.0** (`LICENSE`,
+  copyleft + commercial-OK, the share-alike analog to the frame's license), and
+  the 3D-printed frame design under **CC BY-SA 4.0** (`printed_parts/LICENSE`) to
+  match the model as published on Printables. Documented in the README "License"
+  section and `printed_parts/README.md`.
+
+- [x] TD-4 Pi 3 + PiTFT 480×320 deployment — one systemd service
+  The same program, now on hardware. Done, though the back-end diverged from the
+  original fbcp-mirroring plan: instead of `fbcp-ili9341` copying `fb0`→`fb1`, the
+  renderer writes frames **straight to the panel framebuffer** (`fb1`) via the SDL
+  `dummy` video driver, with `numpy` packing each frame to the panel's depth.
+  Verified end-to-end on the physical build (see `printed_parts/`).
+  - [x] TD-4.1 64-bit Raspberry Pi OS on the Pi 3 (Lite/**Trixie**, not Bullseye as
+        first planned); venv + `pip install -r claude_o_meter/requirements.txt`.
+        `curl-cffi>=0.15` (plus `pygame`, `numpy`) install from prebuilt aarch64
+        wheels — no compiler. Pin recorded in `requirements.txt`.
+  - [x] TD-4.2 PiTFT panel enabled via Adafruit support on the **legacy
+        `fb_hx8357d` framebuffer driver** (overlay must not carry `,drm`), confirmed
+        as `/dev/fb1` (16bpp RGB565, 480×320). fbcp dropped — the renderer targets
+        `fb1` directly instead of mirroring `fb0`.
+  - [x] TD-4.3 `claude_o_meter` renders to the framebuffer (`DISPLAY_MODE=framebuffer`,
+        SDL `dummy`, depth auto-detected, `framebuffer.py` packs RGB565); full cluster
+        confirmed on the physical panel with the `live` source.
+  - [x] TD-4.4 `deploy/claude-o-meter.service` (one unit): `ExecStart=<venv>/bin/python
+        -m claude_o_meter`, `EnvironmentFile=.env`, `StateDirectory`/`DB_PATH` under
+        `/var/lib/claude-o-meter`, `Restart=always`. Comes up unattended on reboot.
+
+- [x] TD-8 Retire PyPortal / two-service artifacts once the new path is proven
+  `server/` and `pyportal/` removed (commit "Retire server/ and pyportal/; fold
+  redline docs into README"); `graphics/*.afdesign` art source kept; polling logic
+  relocated into `claude_o_meter/`.
+  - [x] TD-8.1 Removed `pyportal/`.
+  - [x] TD-8.2 Removed `graphics/png_to_bmp.py` (BMP conversion no longer needed).
+  - [x] TD-8.3 Removed the FastAPI/HTTP shell (`server/`); poller/state/store logic
+        lives in `claude_o_meter/` with its tests kept.
+  - [x] TD-8.4 Top-level `README.md` rewritten around the single `claude-o-meter`
+        program: desktop-window run mode, Pi 3 deployment, and the instrument cluster.
+
+- [x] TD-9 Desktop dev loop documentation
+  The develop-on-desktop workflow (`DATA_SOURCE=fake`, `python -m claude_o_meter`,
+  windowed 480×320 SDL) is documented in the top-level `README.md` "Quick start
+  (desktop, fake data)" section rather than a separate `claude_o_meter/README.md` —
+  same content, one README for the project.
+
 ## 2026-06-01 refinement
 
 - [x] TD-3 Build the pygame display half (`claude_o_meter/`) — the full instrument cluster

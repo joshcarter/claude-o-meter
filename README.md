@@ -239,3 +239,9 @@ Tuning knobs in `claude_o_meter/gauges.py`: `REDLINE_FRAME`, `BLUE_EXPONENT`
 
 The display tests run headless via `SDL_VIDEODRIVER=dummy` (set in the tests),
 so no window or live cookie is needed.
+
+## License
+
+- **Code** — GPL-3.0, see [`LICENSE`](LICENSE).
+- **3D-printed frame design** ([`printed_parts/`](printed_parts/)) — CC BY-SA 4.0,
+  see [`printed_parts/LICENSE`](printed_parts/LICENSE). Also published on Printables.

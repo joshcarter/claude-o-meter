@@ -1,12 +1,12 @@
 # TODO
 
-**Last updated:** 2026-06-01
+**Last updated:** 2026-06-04
 
 Index for the **claude-o-meter** build: a single-process pygame dashboard,
 developed desktop-first and later deployed to a Raspberry Pi 3. Work tracked
 across split files; read in priority order.
 
-<!-- next-td: TD-14 -->
+<!-- next-td: TD-15 -->
 
 ## Project
 
