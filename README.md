@@ -1,28 +1,22 @@
 # Claude-o-meter
 
-A desk "instrument cluster" that shows your Claude Pro/Max rate-limit burn rate
-as a car dashboard — a tachometer for the 5-hour window, a fuel gauge for the
-7-day window, plus money readouts and warning lights.
+![Photo](printed_parts/Claude-o-meter_in_frame.jpg)
 
-One Python program does **both** the polling and the display — no second
-service, no HTTP seam. A background thread polls `claude.ai` (or a fake source)
-and writes an in-memory `state.snapshot`; the **pygame** main loop reads that
-snapshot directly and renders a 480×320 instrument cluster.
+A Claude tachometer which shows your token use within your session
+window. The 5-hour window is the main gauge, with its redline where
+your tokens will be exhaused exactly at the end of the window. The
+fuel gauge is your 7-day window.
 
-```
-claude.ai/api/organizations/{id}/usage          (live mode only)
-        ↓ curl_cffi, ~60s, background thread
-state.snapshot   (in-memory, single process)
-        ↓ read each frame
-pygame 480×320 instrument cluster   (desktop window, or Pi 3 + PiTFT framebuffer)
-```
+This is a simple Python app designed to run on a Raspberry Pi, but it
+can also display in a window on your desktop. You'll need to configure
+your Anthropic session ID (see below) and let it poll for 10+ minutes
+to give you accurate burn rate numbers.
 
-Bring-up is **desktop-first**: the whole app runs in a 480×320 window on macOS
-with no Pi and no cookie (a config-selected fake data source drives the gauges).
-The same program later deploys to a Raspberry Pi 3 driving a PiTFT panel.
-Desktop is a permanent, first-class run target — not just a dev convenience.
+I've included a 3D printable frame of my own design which fits the
+Adafruit PiTFT 3.5 Plus. This works fine on the current Raspberry Pi
+OS (trixie-based) as of 2026.
 
-## Quick start (desktop, fake data)
+## Quick start (desktop)
 
 ```bash
 python3 -m venv .venv
@@ -30,33 +24,39 @@ python3 -m venv .venv
 .venv/bin/python -m claude_o_meter           # DATA_SOURCE defaults to "fake"
 ```
 
-A 480×320 window opens and the gauges oscillate on a demo cycle — no network or
-cookie required. This is the renderer development loop. It runs until you close
-the window (or Ctrl-C). Every widget is exercised over the cycle: the tach and
-fuel gauge sweep their full range every 5 minutes, the low-fuel and check-engine
-lights blink on near each crest, and the fault message rotates through No Data →
-Auth → Connection → Stale across successive cycles.
+A 480×320 window opens. With the default `DATA_SOURCE = "fake"` the gauges run on
+a demo cycle — no network or session key needed — so you can watch every state:
+the tach and fuel gauge sweep their range, the low-fuel and check-engine lights
+blink near each crest, and the fault message cycles through its variants. Close
+the window or press Ctrl-C to quit.
 
-To eyeball every state quickly instead of waiting out the cycle, run the reveal
-demo — it steps through the tach, fuel, both lights, then the fault messages:
+To step through every state quickly instead of waiting out the cycle, run the
+reveal demo — tach, fuel, both lights, then the fault messages:
 
 ```bash
 .venv/bin/python -m claude_o_meter.demo_reveal       # optional ms/step, e.g. 300
 ```
 
-## Live mode (real usage)
+## Live mode (your real usage)
 
-1. Set `DATA_SOURCE = "live"` in `claude_o_meter/config.toml`.
-2. Export your session cookie (see *Auth setup* below) and run:
+Live mode polls your account, so it needs your `claude.ai` session cookie:
+
+1. Open https://claude.ai signed in, then DevTools → Application → Cookies →
+   `https://claude.ai`, and copy the `sessionKey` value (starts `sk-ant-sid01-...`).
+2. Set `DATA_SOURCE = "live"` in `claude_o_meter/config.toml`.
+3. Run with the cookie in the environment:
 
 ```bash
 export CLAUDE_SESSION_KEY=sk-ant-sid01-...
 .venv/bin/python -m claude_o_meter
 ```
 
-`curl_cffi` is required for live mode: it mimics Chrome's TLS fingerprint
-(`impersonate="chrome124"`) to get past Cloudflare on `claude.ai`. It is unused
-in fake mode.
+Let it poll for 10+ minutes before trusting the burn-rate reading. The cookie
+lasts weeks to months; when it expires the check-engine light shows a "needs
+auth" message — get a fresh `sessionKey` and restart.
+
+(`curl_cffi`, used only in live mode, mimics Chrome's TLS fingerprint to get past
+Cloudflare on `claude.ai`.)
 
 ## Configuration (`claude_o_meter/config.toml`)
 
@@ -69,14 +69,13 @@ in fake mode.
 | `FB_DEVICE` | `"/dev/fb1"` | Framebuffer device when `DISPLAY_MODE="framebuffer"` |
 | `DIM_OPACITY` | `212` | Dimming-rectangle opacity 0–255 (212 ≈ 83% ghost) |
 
-**Any key above can also be set as an environment variable of the same name,
-which overrides the TOML.** The Pi service uses this to select
-`DISPLAY_MODE=framebuffer` / `DATA_SOURCE=live` without editing the committed
-`config.toml`.
+Any key above can also be set as an environment variable of the same name, which
+overrides the TOML (the Pi service uses this to set `DISPLAY_MODE=framebuffer`
+and `DATA_SOURCE=live`).
 
 ### Live-mode environment variables
 
-The secret and a few overrides come from the environment, not the TOML file:
+The session key and a few overrides come from the environment, not the TOML file:
 
 | Var | Required | Default | Notes |
 |-----|----------|---------|-------|
@@ -84,18 +83,6 @@ The secret and a few overrides come from the environment, not the TOML file:
 | `CLAUDE_ORG_ID` | no | auto-discover | Pin a specific org instead of discovering it |
 | `POLL_INTERVAL_SECONDS` | no | from `POLL_SECONDS` | Poll cadence override |
 | `DB_PATH` | no | `./samples.db` | SQLite history file for the 5h/7d windows |
-
-## Auth setup (first time + after cookie expiry)
-
-1. Open `https://claude.ai` in your browser, signed in.
-2. DevTools → Application → Cookies → `https://claude.ai`
-3. Find `sessionKey` — value starts `sk-ant-sid01-...`
-4. Export it as `CLAUDE_SESSION_KEY` (or set it in your service environment).
-5. Restart the app.
-
-Expected re-auth cadence: every few weeks to months. When the cookie expires the
-cluster shows the check-engine light with a "needs auth" message at reduced
-brightness; refresh the cookie and restart.
 
 ## Raspberry Pi 3 + PiTFT deployment
 
@@ -180,9 +167,7 @@ Logs: `journalctl -u claude-o-meter -f`.
 
 ## The instrument cluster
 
-A single full-on bitmap per instrument is selectively darkened by **dimming
-rectangles** (black `SRCALPHA` ≈ 83%), with the dim edge snapped to segment
-boundaries. Widgets:
+What each part of the display shows:
 
 | Widget | Source | Mapping |
 |--------|--------|---------|
