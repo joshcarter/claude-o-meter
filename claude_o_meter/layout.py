@@ -57,17 +57,21 @@ TACH_DIM_BOTTOM = 286
 # live value bright over it. NUM_POS is the top-left of the visible "88".
 NUM_POS = (190, 172)
 
-# --- Vertical 20-segment fuel gauge (top-pinned dim) ------------------------
-# remaining = clamp(100 − seven_day.utilization, 0, 100), linear. Lit segments
-# fill bottom→top; the dim rectangle is pinned at the top (FUEL_DIM_TOP) and its
+# --- Vertical 20-segment fuel gauges (top-pinned dim) -----------------------
+# Two side-by-side gauges: 7-day (right) and 5-hour (left). For each,
+# remaining = clamp(100 − utilization, 0, 100), linear. Lit segments fill
+# bottom→top; the dim rectangle is pinned at the top (FUEL_DIM_TOP) and its
 # bottom edge retreats upward as fuel is revealed: bottom edge at
 # FUEL_DIM_BOTTOM0 when fully dimmed (0 lit), rising by FUEL_PITCH per segment.
+# Both gauges share the vertical geometry; only the left/right edges differ.
 FUEL_SEGMENTS = 20
 FUEL_DIM_BOTTOM0 = 220  # dim bottom edge with 0 segments lit
 FUEL_PITCH = 8          # px the bottom edge retreats per lit segment
-FUEL_DIM_LEFT = 422
-FUEL_DIM_RIGHT = 456
 FUEL_DIM_TOP = 63
+FUEL_7D_DIM_LEFT = 447   # 7-day gauge: (447,63)–(461,220)
+FUEL_7D_DIM_RIGHT = 461
+FUEL_5H_DIM_LEFT = 418   # 5-hour gauge: (418,63)–(432,220)
+FUEL_5H_DIM_RIGHT = 432
 
 # --- Warning lights (dimmed when OFF; lit = condition true) -----------------
 # Rects are (x, y, w, h). The check-engine light sits under the tach arc, so the
@@ -117,7 +121,8 @@ RESET_5H_LABEL_POS = (11, 71)     # "5 Hour Reset"
 RESET_5H_TIME_POS = (11, 88)      # "HH:MM" over "88:88"
 DASH_1_POS = (76, 39)
 DASH_2_POS = (116, 39)
-FUEL_LABEL_POS = (422, 36)        # "7 Day" — labels the fuel gauge
+FUEL_7D_LABEL_POS = (446, 42)     # "7D" — labels the 7-day fuel gauge
+FUEL_5H_LABEL_POS = (418, 42)     # "5H" — labels the 5-hour fuel gauge
 RESET_LABEL_PT = 15
 RESET_FIELD_PT = 20
 DASH_PT = 20

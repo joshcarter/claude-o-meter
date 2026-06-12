@@ -83,35 +83,35 @@ def test_tach_full_lit_no_dim():
     assert not _dimmed(surf, 200, 150)
 
 
-# --- dim_fuel: bottom edge = 220 - 8*lit, x 422..456, top 63 ----------------
+# --- dim_fuel (default = 7D gauge): bottom edge = 220 - 8*lit, x 447..461, top 63
 
 def test_fuel_zero_lit_dims_to_y220():
     surf = _surface()
     render.dim_fuel(surf, 0)
-    assert _dimmed(surf, 439, 64)      # just below top (63)
-    assert _dimmed(surf, 439, 219)     # near the bottom (220)
-    assert not _dimmed(surf, 439, 62)  # above the dim top
-    assert not _dimmed(surf, 420, 150)  # left of the gauge (422)
+    assert _dimmed(surf, 454, 64)      # just below top (63)
+    assert _dimmed(surf, 454, 219)     # near the bottom (220)
+    assert not _dimmed(surf, 454, 62)  # above the dim top
+    assert not _dimmed(surf, 445, 150)  # left of the gauge (447)
 
 
 def test_fuel_one_lit_bottom_at_y212():
     surf = _surface()
     render.dim_fuel(surf, 1)
-    assert _dimmed(surf, 439, 211)     # still dimmed above the edge
-    assert not _dimmed(surf, 439, 213)  # revealed below the edge (y>212)
+    assert _dimmed(surf, 454, 211)     # still dimmed above the edge
+    assert not _dimmed(surf, 454, 213)  # revealed below the edge (y>212)
 
 
 def test_fuel_two_lit_bottom_at_y204():
     surf = _surface()
     render.dim_fuel(surf, 2)
-    assert _dimmed(surf, 439, 203)
-    assert not _dimmed(surf, 439, 205)
+    assert _dimmed(surf, 454, 203)
+    assert not _dimmed(surf, 454, 205)
 
 
 def test_fuel_full_lit_no_dim():
     surf = _surface()
     render.dim_fuel(surf, 20)
-    assert not _dimmed(surf, 439, 150)
+    assert not _dimmed(surf, 454, 150)
 
 
 # --- hole punching + warning lights -----------------------------------------

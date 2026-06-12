@@ -143,19 +143,23 @@ def dim_tach(surface, lit, opacity=None):
     )
 
 
-def dim_fuel(surface, lit, opacity=None):
-    """Dim the un-lit (top) portion of the fuel gauge.
+def dim_fuel(surface, lit, opacity=None, left=None, right=None):
+    """Dim the un-lit (top) portion of a fuel gauge.
 
     ``lit`` = segments lit (0..FUEL_SEGMENTS). The dim rectangle is pinned at
     the top; its bottom edge = FUEL_DIM_BOTTOM0 − FUEL_PITCH·lit retreats upward
-    as fuel is revealed bottom→top.
+    as fuel is revealed bottom→top. ``left``/``right`` select which gauge column
+    to dim, defaulting to the 7-day gauge.
     """
+    if left is None:
+        left = layout.FUEL_7D_DIM_LEFT
+    if right is None:
+        right = layout.FUEL_7D_DIM_RIGHT
     lit = max(0, min(layout.FUEL_SEGMENTS, int(round(lit))))
     bottom = layout.FUEL_DIM_BOTTOM0 - layout.FUEL_PITCH * lit
     dim_rect(
         surface,
-        (layout.FUEL_DIM_LEFT, layout.FUEL_DIM_TOP,
-         layout.FUEL_DIM_RIGHT - layout.FUEL_DIM_LEFT, bottom - layout.FUEL_DIM_TOP),
+        (left, layout.FUEL_DIM_TOP, right - left, bottom - layout.FUEL_DIM_TOP),
         opacity,
     )
 
@@ -280,7 +284,8 @@ def draw_resets(surface, snapshot, cfg):
 
     _draw_ink_topleft(surface, "-", f_dash, light, layout.DASH_1_POS)
     _draw_ink_topleft(surface, "-", f_dash, light, layout.DASH_2_POS)
-    _draw_ink_topleft(surface, "7 Day", f_label, light, layout.FUEL_LABEL_POS)
+    _draw_ink_topleft(surface, "7D", f_label, light, layout.FUEL_7D_LABEL_POS)
+    _draw_ink_topleft(surface, "5H", f_label, light, layout.FUEL_5H_LABEL_POS)
 
 
 def _dim_color(color, opacity):
@@ -321,7 +326,10 @@ def render_frame(surface, snapshot, cfg):
 
     dim_tach(surface, gauges.tach_position(snapshot.five_hour_redline_ratio), opacity)
     draw_tach_number(surface, gauges.tach_number(snapshot.five_hour_redline_ratio), cfg)
-    dim_fuel(surface, gauges.fuel_segments(snapshot.seven_day_pct, layout.FUEL_SEGMENTS), opacity)
+    dim_fuel(surface, gauges.fuel_segments(snapshot.seven_day_pct, layout.FUEL_SEGMENTS),
+             opacity, layout.FUEL_7D_DIM_LEFT, layout.FUEL_7D_DIM_RIGHT)
+    dim_fuel(surface, gauges.fuel_segments(snapshot.five_hour_pct, layout.FUEL_SEGMENTS),
+             opacity, layout.FUEL_5H_DIM_LEFT, layout.FUEL_5H_DIM_RIGHT)
 
     # Low-fuel: lit when 7-day utilisation ≥ 80% (≤ 20% remaining). (TD-3.6)
     low_fuel_on = (snapshot.seven_day_pct or 0.0) >= 80.0
