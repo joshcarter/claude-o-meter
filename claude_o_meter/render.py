@@ -331,8 +331,9 @@ def render_frame(surface, snapshot, cfg):
     dim_fuel(surface, gauges.fuel_segments(snapshot.five_hour_pct, layout.FUEL_SEGMENTS),
              opacity, layout.FUEL_5H_DIM_LEFT, layout.FUEL_5H_DIM_RIGHT)
 
-    # Low-fuel: lit when 7-day utilisation ≥ 80% (≤ 20% remaining). (TD-3.6)
-    low_fuel_on = (snapshot.seven_day_pct or 0.0) >= 80.0
+    # Low-fuel: lit when either window drops below 15% remaining (util ≥ 85%). (TD-3.6)
+    low_fuel_on = ((snapshot.seven_day_pct or 0.0) >= 85.0
+                   or (snapshot.five_hour_pct or 0.0) >= 85.0)
     dim_low_fuel(surface, low_fuel_on, opacity)
 
     # Reset date/time readouts + static labels (top area, always drawn). (TD-3.7.b)

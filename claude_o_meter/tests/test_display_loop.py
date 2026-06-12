@@ -65,10 +65,12 @@ def test_render_frame_toggles_warning_lights():
         ce_off = value_at(Snapshot(last_update=1), 376, 235)
         assert ce_on > ce_off
 
-        # Low-fuel: lit when 7-day utilisation ≥ 80%. Sampled at (447,235).
-        lf_on = value_at(Snapshot(last_update=1, seven_day_pct=90.0), 447, 235)
-        lf_off = value_at(Snapshot(last_update=1, seven_day_pct=10.0), 447, 235)
-        assert lf_on > lf_off
+        # Low-fuel: lit when either window's utilisation ≥ 85%. Sampled at (447,235).
+        lf_off = value_at(Snapshot(last_update=1, seven_day_pct=10.0, five_hour_pct=10.0), 447, 235)
+        lf_on_7d = value_at(Snapshot(last_update=1, seven_day_pct=90.0, five_hour_pct=10.0), 447, 235)
+        lf_on_5h = value_at(Snapshot(last_update=1, seven_day_pct=10.0, five_hour_pct=90.0), 447, 235)
+        assert lf_on_7d > lf_off
+        assert lf_on_5h > lf_off
     finally:
         pygame.quit()
 

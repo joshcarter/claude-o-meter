@@ -30,8 +30,9 @@ def test_fuel_drains_and_crosses_low_threshold():
     segs = [fuel_segments(s.seven_day_pct) for s in snaps]
     assert min(segs) <= 2.0          # near empty
     assert max(segs) >= 18.0         # near full
-    # The low-fuel light (7-day utilisation ≥ 80%) both lights and clears.
-    low = [(s.seven_day_pct or 0.0) >= 80.0 for s in snaps]
+    # The low-fuel light (either window's utilisation ≥ 85%) both lights and clears.
+    low = [(s.seven_day_pct or 0.0) >= 85.0 or (s.five_hour_pct or 0.0) >= 85.0
+           for s in snaps]
     assert any(low) and not all(low)
 
 
