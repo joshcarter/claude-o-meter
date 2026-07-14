@@ -3,6 +3,7 @@ import time
 
 from claude_o_meter.poller import (
     MAX_REDLINE_RATIO,
+    SEVEN_DAY_WINDOW_HOURS,
     _compute_seven_day_burn,
     _redline,
 )
@@ -53,6 +54,29 @@ def test_seven_day_burn_insufficient_data():
     store.insert(now, 50.0, 60.0, None)
 
     assert _compute_seven_day_burn(store) is None
+
+
+def test_seven_day_provisional_burn_when_no_history():
+    # Mid-week util with an empty/short store: average since window open.
+    store = make_store()
+    now = 1_000_000
+    # 3 days remaining of a 7-day window → 4 days = 96h elapsed.
+    resets_at = now + 3 * 24 * 3600
+    store.insert(now, 50.0, 48.0, None)
+
+    rate = _compute_seven_day_burn(store, pct=48.0, resets_at=resets_at, now=now)
+    assert rate is not None and abs(rate - 48.0 / 96.0) < 1e-6
+
+
+def test_seven_day_provisional_when_baseline_too_short():
+    store = make_store()
+    now = 1_000_000
+    resets_at = now + 3 * 24 * 3600
+    store.insert(now - 1800, 50.0, 47.0, None)
+    store.insert(now,        50.0, 48.0, None)
+
+    rate = _compute_seven_day_burn(store, pct=48.0, resets_at=resets_at, now=now)
+    assert rate is not None and abs(rate - 48.0 / 96.0) < 1e-6
 
 
 def test_redline_normal():

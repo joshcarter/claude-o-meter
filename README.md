@@ -9,8 +9,9 @@ fuel gauge is your 7-day window.
 
 This is a simple Python app designed to run on a Raspberry Pi, but it
 can also display in a window on your desktop. You'll need to configure
-your Anthropic session ID (see below) and let it poll for 10+ minutes
-to give you accurate burn rate numbers.
+your Anthropic session ID (see below). The tach shows a rough
+window-average burn rate from the first poll; after ~10 minutes of
+samples the slope switches to a more accurate recent regression.
 
 I've included a 3D printable frame of my own design which fits the
 Adafruit PiTFT 3.5 Plus. This works fine on the current Raspberry Pi
@@ -51,9 +52,11 @@ export CLAUDE_SESSION_KEY=sk-ant-sid01-...
 .venv/bin/python -m claude_o_meter
 ```
 
-Let it poll for 10+ minutes before trusting the burn-rate reading. The cookie
-lasts weeks to months; when it expires the check-engine light shows a "needs
-auth" message — get a fresh `sessionKey` and restart.
+A provisional burn rate is available immediately (utilization ÷ hours elapsed
+in the window). After ~10 minutes of samples the gauge switches to the tighter
+recent-regression estimate. The cookie lasts weeks to months; when it expires
+the check-engine light shows a "needs auth" message — get a fresh `sessionKey`
+and restart.
 
 (`curl_cffi`, used only in live mode, mimics Chrome's TLS fingerprint to get past
 Cloudflare on `claude.ai`.)

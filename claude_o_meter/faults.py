@@ -23,8 +23,9 @@ ERR_STALE = "Data Stale"            # had data, now older than STALE_AFTER
 # Derived (no error set, but never polled successfully).
 MSG_NO_DATA = "No Data"
 
-# Derived: polled fine, but not enough history yet for a 5-hour burn rate, so
-# the tach would read a misleading 0. Shown until samples span the burn window.
+# Derived: polled fine, but neither the sample regression nor the window-average
+# provisional rate is available yet (e.g. brand-new window with no resets_at, or
+# too little elapsed time for the average). Shown until a burn estimate exists.
 MSG_WARMING_UP = "Collecting Data"
 
 

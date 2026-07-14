@@ -16,6 +16,15 @@ STALE_AFTER = 300  # 5 minutes
 SEVEN_DAY_BURN_BASELINE = 3 * 3600  # 7d utilization moves slowly; a 30-min delta is just noise
 FIVE_HOUR_BURN_WINDOW = 30 * 60  # regression window for the 5h burn rate
 FIVE_HOUR_BURN_MIN_SPAN = 10 / 60  # hours of spread required before a slope is trusted
+# Window lengths implied by the API's resets_at (rolling session windows).
+FIVE_HOUR_WINDOW_HOURS = 5.0
+SEVEN_DAY_WINDOW_HOURS = 7 * 24.0
+# When the regression has too little history, fall back to utilization /
+# hours-elapsed-in-window. Guard elapsed so a 1-minute-old window with a few
+# percent used doesn't peg the tach at hundreds of %/hr.
+FIVE_HOUR_AVG_MIN_ELAPSED = 5 / 60   # 5 minutes into the 5h window
+SEVEN_DAY_AVG_MIN_ELAPSED = 30 / 60  # 30 minutes into the 7d window
+SEVEN_DAY_BURN_MIN_SPAN = 1.0        # hours of spread required for 7d regression
 MAX_REDLINE_RATIO = 10.0
 BALANCE_POLL_EVERY = 5  # fetch balance every N usage polls
 PRUNE_EVERY = 60  # prune aged rows ~hourly at the default 60s cadence (see below)
@@ -92,7 +101,8 @@ def _burn_rate(rows: list[tuple[int, float]], min_dt_hours: float) -> Optional[f
     Returns ``None`` when there isn't enough history to compute a slope (fewer
     than two samples, or a span shorter than ``min_dt_hours``) — distinct from
     ``0.0``, which means a real flat or decaying burn. The caller surfaces the
-    ``None`` case as a "collecting data" warm-up state rather than a zero gauge.
+    ``None`` case as a "collecting data" warm-up state rather than a zero gauge,
+    unless a window-average provisional rate is available.
 
     Uses every sample, not just the endpoints, so integer-quantized utilization
     readings average out instead of jolting the slope as steps age in and out.
@@ -118,15 +128,97 @@ def _burn_rate(rows: list[tuple[int, float]], min_dt_hours: float) -> Optional[f
     return rate if rate > 0 else 0.0
 
 
-def _compute_five_hour_burn(store: Store) -> Optional[float]:
-    return _burn_rate(
-        store.recent_five_hour(int(time.time()) - FIVE_HOUR_BURN_WINDOW),
-        FIVE_HOUR_BURN_MIN_SPAN,
+def _window_average_burn(
+    pct: float,
+    resets_at: Optional[int],
+    window_hours: float,
+    now: int,
+    min_elapsed_hours: float,
+) -> Optional[float]:
+    """Provisional burn rate: utilization / hours elapsed in the current window.
+
+    Available from a single poll once the window has been open long enough to
+    be meaningful. Coarser than the sample regression (it is the average pace
+    since the window opened, not the recent slope) but far better than a blank
+    gauge while samples accumulate.
+    """
+    if resets_at is None:
+        return None
+    hours_to_reset = (resets_at - now) / 3600
+    if hours_to_reset <= 0:
+        return None
+    hours_elapsed = window_hours - hours_to_reset
+    if hours_elapsed < min_elapsed_hours:
+        return None
+    # Clock skew / API quirks: never treat elapsed as larger than the window.
+    if hours_elapsed > window_hours:
+        hours_elapsed = window_hours
+    rate = pct / hours_elapsed
+    return rate if rate > 0 else 0.0
+
+
+def _sample_since(
+    now: int, lookback_seconds: int, resets_at: Optional[int], window_hours: float
+) -> int:
+    """Earliest timestamp to include in a burn regression.
+
+    Clips the lookback to the current window start (``resets_at − window``) so
+    pre-reset samples — which jump from high util to ~0 — cannot drag the slope
+    negative and report a false idle right after a reset.
+    """
+    since = now - lookback_seconds
+    if resets_at is not None:
+        window_start = resets_at - int(window_hours * 3600)
+        if window_start > since:
+            since = window_start
+    return since
+
+
+def _compute_five_hour_burn(
+    store: Store,
+    pct: Optional[float] = None,
+    resets_at: Optional[int] = None,
+    now: Optional[int] = None,
+) -> Optional[float]:
+    """5h burn rate: prefer recent regression; fall back to window average.
+
+    ``pct`` / ``resets_at`` / ``now`` enable the provisional average-since-window-
+    open estimate when there is not yet enough sample span for a trusted slope.
+    Omitting them keeps the pure-regression behaviour (used by older tests).
+    """
+    if now is None:
+        now = int(time.time())
+    since = _sample_since(now, FIVE_HOUR_BURN_WINDOW, resets_at, FIVE_HOUR_WINDOW_HOURS)
+    rate = _burn_rate(store.recent_five_hour(since), FIVE_HOUR_BURN_MIN_SPAN)
+    if rate is not None:
+        return rate
+    if pct is None:
+        return None
+    return _window_average_burn(
+        pct, resets_at, FIVE_HOUR_WINDOW_HOURS, now, FIVE_HOUR_AVG_MIN_ELAPSED
     )
 
 
-def _compute_seven_day_burn(store: Store) -> Optional[float]:
-    return _burn_rate(store.recent_seven_day(int(time.time()) - SEVEN_DAY_BURN_BASELINE), 1.0)
+def _compute_seven_day_burn(
+    store: Store,
+    pct: Optional[float] = None,
+    resets_at: Optional[int] = None,
+    now: Optional[int] = None,
+) -> Optional[float]:
+    """7d burn rate: prefer multi-hour regression; fall back to window average."""
+    if now is None:
+        now = int(time.time())
+    since = _sample_since(
+        now, SEVEN_DAY_BURN_BASELINE, resets_at, SEVEN_DAY_WINDOW_HOURS
+    )
+    rate = _burn_rate(store.recent_seven_day(since), SEVEN_DAY_BURN_MIN_SPAN)
+    if rate is not None:
+        return rate
+    if pct is None:
+        return None
+    return _window_average_burn(
+        pct, resets_at, SEVEN_DAY_WINDOW_HOURS, now, SEVEN_DAY_AVG_MIN_ELAPSED
+    )
 
 
 def _fmt_ratio(ratio: Optional[float]) -> str:
@@ -254,11 +346,15 @@ async def polling_loop(store: Store) -> None:
                     five_resets = _iso_to_unix(fh["resets_at"])
                     seven_resets = _iso_to_unix(sd["resets_at"])
 
-                    five_burn = _compute_five_hour_burn(store)
+                    five_burn = _compute_five_hour_burn(
+                        store, five_pct, five_resets, now
+                    )
                     five_sustainable, five_ratio = _redline(
                         five_pct, five_resets, five_burn, now
                     )
-                    seven_burn = _compute_seven_day_burn(store)
+                    seven_burn = _compute_seven_day_burn(
+                        store, seven_pct, seven_resets, now
+                    )
                     seven_sustainable, seven_ratio = _redline(
                         seven_pct, seven_resets, seven_burn, now
                     )

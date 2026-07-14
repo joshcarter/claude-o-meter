@@ -9,8 +9,9 @@ class Snapshot:
     five_hour_burn_rate: Optional[float] = None  # None = not enough history yet
     five_hour_sustainable_rate: Optional[float] = None
     five_hour_redline_ratio: Optional[float] = None
-    # True after a successful poll that still lacks enough samples for a 5h burn
-    # rate; drives the "collecting data" warm-up message instead of a 0 tach.
+    # True after a successful poll that still has no 5h burn estimate (neither
+    # regression nor window-average provisional); drives the "collecting data"
+    # warm-up message instead of a 0 tach.
     five_hour_warming_up: bool = False
     seven_day_pct: Optional[float] = None
     seven_day_resets_at: Optional[int] = None
