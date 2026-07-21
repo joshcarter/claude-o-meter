@@ -40,49 +40,58 @@ C_LIGHT = (0x40, 0xA9, 0xBF)   # lit segments / live readouts
 C_ERROR = (0xFF, 0x22, 0x00)   # fault text
 
 # --- 20-segment tach bar (right-pinned dim) ---------------------------------
-# The arc's bars are revealed left→right by a tall dim rectangle that spans the
-# full arc height (TACH_DIM_TOP..TACH_DIM_BOTTOM) and slides horizontally. Its
-# left edge sits at TACH_DIM_LEFT0 when fully dimmed (0 lit) and advances right
-# by TACH_PITCH per revealed segment; the right/top/bottom edges are fixed.
+# The bars are revealed left→right by a tall dim rectangle that spans the full
+# bar height (TACH_DIM_TOP..TACH_DIM_BOTTOM) and slides horizontally. Its left
+# edge sits at TACH_DIM_LEFT0 when fully dimmed (0 lit) and advances right by
+# TACH_PITCH per revealed segment; the right/top/bottom edges are fixed.
+# Geometry: 20 bars × 15 px + 19 gaps × 8 px = 452 px content, margins 14/14
+# on a 480-wide screen → dim bounds [14,75]–[466,287]. Pitch = 15+8 = 23.
 # Driven by 5h redline_ratio via gauges.tach_position().
 TACH_SEGMENTS = 20
-TACH_DIM_LEFT0 = 10     # dim left edge with 0 segments lit
-TACH_PITCH = 20         # px the left edge advances per lit segment
-TACH_DIM_TOP = 16
-TACH_DIM_RIGHT = 403
-TACH_DIM_BOTTOM = 286
+TACH_DIM_LEFT0 = 14     # dim left edge with 0 segments lit
+TACH_PITCH = 23         # px the left edge advances per lit segment (bar+gap)
+TACH_DIM_TOP = 75
+TACH_DIM_RIGHT = 466
+TACH_DIM_BOTTOM = 287
 
 # --- Two-digit 0–99 readout (numeric form of the tach) ----------------------
 # DSEG7 Modern Mini Italic. Drawn as a dim "88" ghost (all segments) with the
 # live value bright over it. NUM_POS is the top-left of the visible "88".
-NUM_POS = (190, 172)
+NUM_POS = (246, 186)
 
-# --- 15-segment fuel gauges (three stacked horizontal-bar gauges) -----------
-# Three gauges stacked top→bottom — 5-hour, 7-day, Fable — sharing one x column
-# [FUEL_DIM_LEFT..FUEL_DIM_RIGHT]. In the art each gauge is 15 horizontal bars,
-# 2 px tall with a 1 px black gap between (FUEL_BAR_PITCH = 3 px/bar), so a band
-# spans 15·2 + 14·1 = 44 px. For each gauge remaining = clamp(100 − utilization,
-# 0, 100) maps linearly onto the 15 bars, which fill bottom→top; the dim
-# rectangle is pinned at the band TOP and grows downward by FUEL_BAR_PITCH per
-# *un*-lit bar (see render.dim_fuel) so an empty gauge dims the whole band and a
-# full one dims nothing.
-FUEL_SEGMENTS = 15
-FUEL_BAR_PITCH = 3       # px per bar: 2 px lit bar + 1 px gap
-FUEL_DIM_LEFT = 423
-FUEL_DIM_RIGHT = 455
-FUEL_5H_DIM_TOP = 37        # 5-hour: (423,37)–(455,81)
-FUEL_5H_DIM_BOTTOM = 81
-FUEL_7D_DIM_TOP = 107       # 7-day:  (423,107)–(455,151)
-FUEL_7D_DIM_BOTTOM = 151
-FUEL_FABLE_DIM_TOP = 177    # Fable:  (423,177)–(455,221)
-FUEL_FABLE_DIM_BOTTOM = 221
+# --- 25-segment fuel gauges (three side-by-side horizontal bars) ------------
+# Three gauges left→right — 5-hour, 7-day, Fable — each a horizontal run of
+# 25 bars, 3 px wide with a 2 px gap (FUEL_BAR_PITCH = 5 px/bar). Content width
+# is 25·3 + 24·2 = 123 px. Remaining = clamp(100 − utilization, 0, 100) maps
+# linearly onto the 25 bars, revealed left→right; the dim rectangle is pinned
+# at the band RIGHT and its left edge advances by FUEL_BAR_PITCH per lit bar
+# (see render.dim_fuel) so empty dims the whole band and full dims nothing.
+FUEL_SEGMENTS = 25
+FUEL_BAR_W = 3
+FUEL_GAP = 2
+FUEL_BAR_PITCH = 5       # px per bar: 3 px lit bar + 2 px gap
+# 5-hour: [15,28]–[138,40]
+FUEL_5H_DIM_LEFT = 15
+FUEL_5H_DIM_TOP = 28
+FUEL_5H_DIM_RIGHT = 138
+FUEL_5H_DIM_BOTTOM = 40
+# 7-day:  [178,28]–[301,40]
+FUEL_7D_DIM_LEFT = 178
+FUEL_7D_DIM_TOP = 28
+FUEL_7D_DIM_RIGHT = 301
+FUEL_7D_DIM_BOTTOM = 40
+# Fable:  [342,28]–[465,40]
+FUEL_FABLE_DIM_LEFT = 342
+FUEL_FABLE_DIM_TOP = 28
+FUEL_FABLE_DIM_RIGHT = 465
+FUEL_FABLE_DIM_BOTTOM = 40
 
 # --- Warning lights (dimmed when OFF; lit = condition true) -----------------
-# Rects are (x, y, w, h). The check-engine light sits under the tach arc, so the
-# tach dim always excludes CHECK_ENGINE_RECT and the light is dimmed solely by
-# its own rect — otherwise the overlap would dim it twice (too dark).
-CHECK_ENGINE_RECT = (355, 232, 48, 46)   # (355,232)–(403,278)
-LOW_FUEL_RECT = (416, 232, 48, 46)       # (416,232)–(464,278); clear of the tach
+# Rects are (x, y, w, h). Both lights sit under the tach dim region, so the tach
+# dim punches them out and each light is dimmed solely by its own rect —
+# otherwise the overlap would dim them twice (too dark) or hold them off.
+CHECK_ENGINE_RECT = (13, 138, 48, 46)   # (13,138)–(61,184)
+LOW_FUEL_RECT = (13, 82, 48, 46)       # (13,82)–(61,128)
 
 # --- Money readouts ---------------------------------------------------------
 # Each readout is a group of four text elements at fixed offsets from the
@@ -108,30 +117,34 @@ MONEY_LABEL_PT = 15
 
 # (label, group top-left, Snapshot field). Drawn when there is no active fault.
 MONEY_GROUPS = (
-    ("Extra", (10, 289), "extra_usage_used"),
-    ("Limit", (170, 289), "extra_usage_limit"),
-    ("Balance", (328, 289), "balance"),
+    ("Extra", (14, 290), "extra_usage_used"),
+    ("Limit", (169, 290), "extra_usage_limit"),
+    ("Balance", (324, 290), "balance"),
 )
 
-# --- Reset readouts + static labels (always drawn, top area) ----------------
-# Absolute top-left (visible-ink) positions. Three stacked readouts: 7-Day and
-# Fable are weekly windows shown as dates ("YYYY - MM - DD" over the "8888  88
-# 88" ghost, with two dashes overlaying the group gaps); 5-Hour is a time
-# ("HH:MM" over "88:88"). Each DSEG field is drawn over a dim all-segments ghost;
-# the live string shares the ghost's structure and registers on it without
-# per-cell packing. Labels/dashes are Roboto; fields are DSEG7 Modern Mini Bold
-# Italic. (The "5H"/"7D"/"FA" gauge labels are baked into background.png now, so
-# the renderer no longer draws them.)
-RESET_7D_LABEL_POS = (12, 14)     # "7 Day Reset"
-RESET_7D_DATE_POS = (11, 30)      # date over "8888  88  88"
-RESET_7D_DASH_Y = 38              # dash ink-top; x is computed from the gaps
-RESET_FABLE_LABEL_POS = (12, 56)  # "Fable Reset"
-RESET_FABLE_DATE_POS = (11, 72)   # date over "8888  88  88"
-RESET_FABLE_DASH_Y = 80           # dash ink-top; x is computed from the gaps
-RESET_5H_LABEL_POS = (12, 99)     # "5 Hour Reset"
-RESET_5H_TIME_POS = (11, 115)     # time over "88:88"
-RESET_LABEL_PT = 15
-RESET_FIELD_PT = 18               # DSEG date/time fields (was 20)
+# --- Reset readouts + static labels (always drawn) --------------------------
+# Absolute top-left (visible-ink) positions. Each fuel column has a title above
+# the bars and a DSEG reset value below them. 7-Day and Fable are weekly windows
+# shown as dates ("YYYY - MM - DD" over the "8888  88  88" ghost, with two dashes
+# overlaying the group gaps); 5-Hour is a time ("HH:MM" over "88:88") with a
+# "resets at" sub-label. Each DSEG field is drawn over a dim all-segments ghost.
+# Labels are Roboto Condensed Bold Italic; fields are DSEG7 Modern Mini Bold
+# Italic.
+#
+# 5-Hour column (under the 5h fuel gauge): title, "resets at", HH:MM value.
+RESET_5H_LABEL_POS = (12, 10)     # "5 Hour"
+RESET_5H_SUBLABEL_POS = (12, 52)  # "resets at"
+RESET_5H_TIME_POS = (81, 47)      # time over "88:88"
+# 7-Day column: title above bars, date below.
+RESET_7D_LABEL_POS = (175, 10)    # "7 Day"
+RESET_7D_DATE_POS = (174, 47)     # date over "8888  88  88"
+RESET_7D_DASH_Y = 55              # dash ink-top; x is computed from the gaps
+# Fable column: title above bars, date below.
+RESET_FABLE_LABEL_POS = (339, 10)  # "Fable"
+RESET_FABLE_DATE_POS = (338, 47)   # date over "8888  88  88"
+RESET_FABLE_DASH_Y = 55            # dash ink-top; x is computed from the gaps
+RESET_LABEL_PT = 15               # Roboto Condensed Bold Italic
+RESET_FIELD_PT = 18               # DSEG date/time fields
 # px trimmed from each DSEG *digit* advance in the date fields, tightening the
 # digits within a group so the field clears the tach arc. Inter-group spaces
 # (and thus the dash gaps) are left alone. See render._render_condensed.

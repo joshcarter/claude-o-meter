@@ -66,19 +66,19 @@ def test_tach_position_pegs_at_full_ratio():
 
 
 def test_fuel_segments_full_and_empty():
-    assert fuel_segments(0) == 15.0     # no utilisation → full tank
+    assert fuel_segments(0) == 25.0     # no utilisation → full tank
     assert fuel_segments(100) == 0.0    # fully utilised → empty
-    assert fuel_segments(None) == 15.0  # no data → reads full
+    assert fuel_segments(None) == 25.0  # no data → reads full
 
 
 def test_fuel_segments_linear():
-    assert fuel_segments(50) == 7.5
-    assert fuel_segments(80) == 3.0     # util 80 → 20% remaining → 3/15 bars
+    assert fuel_segments(50) == 12.5
+    assert fuel_segments(80) == 5.0     # util 80 → 20% remaining → 5/25 bars
 
 
 def test_fuel_segments_clamps_overrange():
     assert fuel_segments(120) == 0.0    # over-utilised clamps to empty
-    assert fuel_segments(-10) == 15.0   # negative util clamps to full
+    assert fuel_segments(-10) == 25.0   # negative util clamps to full
 
 
 def test_fuel_segments_custom_count():

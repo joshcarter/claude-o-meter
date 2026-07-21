@@ -43,97 +43,103 @@ def test_dim_rect_full_opacity_blacks_out():
     assert surf.get_at((15, 15))[:3] == (0, 0, 0)
 
 
-# --- dim_tach: left edge = 10 + 20*lit, spans y 16..286 ---------------------
+# --- dim_tach: left edge = 14 + 23*lit, spans y 75..287 ---------------------
+# Sample at y=220 so we stay clear of the warning-light holes (LF y82–128,
+# CE y138–184) that the tach dim punches out on the left edge.
+_TY = 220
 
-def test_tach_zero_lit_dims_from_x10():
+
+def test_tach_zero_lit_dims_from_x14():
     surf = _surface()
     render.dim_tach(surf, 0)
-    assert _dimmed(surf, 11, 150)      # inside dim (x≥10)
-    assert _dimmed(surf, 402, 150)     # up to the right edge (403)
-    assert not _dimmed(surf, 200, 10)  # above the dim top (16)
-    assert not _dimmed(surf, 200, 300)  # below the dim bottom (286)
+    assert _dimmed(surf, 15, _TY)      # inside dim (x≥14)
+    assert _dimmed(surf, 465, _TY)     # up to the right edge (466)
+    assert not _dimmed(surf, 200, 70)  # above the dim top (75)
+    assert not _dimmed(surf, 200, 300)  # below the dim bottom (287)
 
 
-def test_tach_one_lit_edge_at_x30():
+def test_tach_one_lit_edge_at_x37():
     surf = _surface()
     render.dim_tach(surf, 1)
-    assert not _dimmed(surf, 29, 150)  # revealed (left of edge x=30)
-    assert _dimmed(surf, 31, 150)      # dimmed (right of edge)
+    assert not _dimmed(surf, 36, _TY)  # revealed (left of edge x=37)
+    assert _dimmed(surf, 38, _TY)      # dimmed (right of edge)
 
 
-def test_tach_two_lit_edge_at_x50():
+def test_tach_two_lit_edge_at_x60():
     surf = _surface()
     render.dim_tach(surf, 2)
-    assert not _dimmed(surf, 49, 150)
-    assert _dimmed(surf, 51, 150)
+    assert not _dimmed(surf, 59, _TY)
+    assert _dimmed(surf, 61, _TY)
 
 
 def test_tach_fractional_rounds_to_boundary():
     a = _surface()
-    render.dim_tach(a, 1.4)            # → 1, edge at x=30
-    assert not _dimmed(a, 29, 150) and _dimmed(a, 31, 150)
+    render.dim_tach(a, 1.4)            # → 1, edge at x=37
+    assert not _dimmed(a, 36, _TY) and _dimmed(a, 38, _TY)
     b = _surface()
-    render.dim_tach(b, 1.6)            # → 2, edge at x=50
-    assert not _dimmed(b, 49, 150) and _dimmed(b, 51, 150)
+    render.dim_tach(b, 1.6)            # → 2, edge at x=60
+    assert not _dimmed(b, 59, _TY) and _dimmed(b, 61, _TY)
 
 
 def test_tach_full_lit_no_dim():
     surf = _surface()
     render.dim_tach(surf, 20)
-    assert not _dimmed(surf, 200, 150)
+    assert not _dimmed(surf, 200, _TY)
 
 
-# --- dim_fuel: 15 bars, pitch 3 px, shared column x 423..455, filled bottom→top.
-# Sampled on the 7-day band (top 107, bottom 151) at x=440.
-_7D_TOP = layout.FUEL_7D_DIM_TOP
-_7D_BOT = layout.FUEL_7D_DIM_BOTTOM
+# --- dim_fuel: 25 bars, pitch 5 px, horizontal left→right; dim walks in from right.
+# Sampled on the 7-day band [178,28]–[301,40].
+_7D = (layout.FUEL_7D_DIM_LEFT, layout.FUEL_7D_DIM_TOP,
+       layout.FUEL_7D_DIM_RIGHT, layout.FUEL_7D_DIM_BOTTOM)
 
 
 def _dim_7d(surf, lit):
-    render.dim_fuel(surf, lit, _7D_TOP, _7D_BOT)
+    render.dim_fuel(surf, lit, *_7D)
 
 
 def test_fuel_zero_lit_dims_whole_band():
     surf = _surface()
     _dim_7d(surf, 0)
-    assert _dimmed(surf, 440, 108)      # just below the band top (107)
-    assert _dimmed(surf, 440, 150)      # bottom bar dimmed too
-    assert not _dimmed(surf, 440, 106)  # above the band top
-    assert not _dimmed(surf, 420, 130)  # left of the column (423)
-    assert not _dimmed(surf, 456, 130)  # right of the column (455)
+    assert _dimmed(surf, 179, 34)       # inside dim (x≥178)
+    assert _dimmed(surf, 300, 34)       # up to the right edge (301)
+    assert not _dimmed(surf, 240, 27)   # above the band top (28)
+    assert not _dimmed(surf, 240, 41)   # below the band bottom (40)
+    assert not _dimmed(surf, 177, 34)   # left of the band (178)
+    assert not _dimmed(surf, 302, 34)   # right of the band (301)
 
 
-def test_fuel_one_lit_reveals_bottom_bar():
-    # 1 lit → dim height = 3*(15-1) = 42, so dim covers 107..148; bottom bar
-    # (149,150) is revealed.
+def test_fuel_one_lit_reveals_left_bar():
+    # 1 lit → dim left = 178 + 5 = 183; first pitch unit revealed.
     surf = _surface()
     _dim_7d(surf, 1)
-    assert _dimmed(surf, 440, 148)      # still dimmed above the edge
-    assert not _dimmed(surf, 440, 150)  # revealed bottom bar
+    assert not _dimmed(surf, 182, 34)   # revealed (left of edge x=183)
+    assert _dimmed(surf, 184, 34)       # dimmed (right of edge)
 
 
 def test_fuel_two_lit_reveals_two_bars():
-    # 2 lit → dim height 39, covers 107..145; bars at (146,147) and (149,150) lit.
+    # 2 lit → dim left = 178 + 10 = 188.
     surf = _surface()
     _dim_7d(surf, 2)
-    assert _dimmed(surf, 440, 145)
-    assert not _dimmed(surf, 440, 147)
+    assert not _dimmed(surf, 187, 34)
+    assert _dimmed(surf, 189, 34)
 
 
 def test_fuel_full_lit_no_dim():
     surf = _surface()
-    _dim_7d(surf, 15)
-    assert not _dimmed(surf, 440, 130)
+    _dim_7d(surf, 25)
+    assert not _dimmed(surf, 240, 34)
 
 
-def test_fuel_stacked_bands_are_independent():
+def test_fuel_gauges_are_independent():
     # A gauge only dims its own band: an empty Fable gauge must not touch the
-    # 5-hour band above it, nor vice-versa.
+    # 5-hour or 7-day bands to its left.
     surf = _surface()
-    render.dim_fuel(surf, 0, layout.FUEL_FABLE_DIM_TOP, layout.FUEL_FABLE_DIM_BOTTOM)
-    assert _dimmed(surf, 440, 178)      # inside the Fable band
-    assert not _dimmed(surf, 440, 50)   # 5-hour band untouched
-    assert not _dimmed(surf, 440, 130)  # 7-day band untouched
+    render.dim_fuel(surf, 0,
+                    layout.FUEL_FABLE_DIM_LEFT, layout.FUEL_FABLE_DIM_TOP,
+                    layout.FUEL_FABLE_DIM_RIGHT, layout.FUEL_FABLE_DIM_BOTTOM)
+    assert _dimmed(surf, 400, 34)       # inside the Fable band
+    assert not _dimmed(surf, 76, 34)     # 5-hour band untouched
+    assert not _dimmed(surf, 240, 34)   # 7-day band untouched
 
 
 # --- hole punching + warning lights -----------------------------------------
@@ -145,27 +151,30 @@ def test_dim_rect_hole_left_undimmed():
     assert _dimmed(surf, 10, 10)       # outside the hole, inside the rect
 
 
-def test_tach_dim_excludes_check_engine():
+def test_tach_dim_excludes_warning_lights():
+    # Both warning lights sit under the tach dim and must be punched out.
     surf = _surface()
-    render.dim_tach(surf, 0)           # dim covers x10..403, y16..286
-    assert not _dimmed(surf, 376, 255)  # inside check-engine rect → punched out
-    assert _dimmed(surf, 340, 255)      # left of the light, still under the tach
-    assert _dimmed(surf, 376, 150)      # above the light, still under the tach
+    render.dim_tach(surf, 0)           # dim covers x14..466, y75..287
+    assert not _dimmed(surf, 37, 161)  # inside check-engine rect → punched out
+    assert not _dimmed(surf, 37, 105)  # inside low-fuel rect → punched out
+    assert _dimmed(surf, 70, 161)      # right of the lights, still under the tach
+    assert _dimmed(surf, 37, 200)      # below check-engine, still under the tach
 
 
 def test_dim_check_engine_on_off():
     on = _surface()
     render.dim_check_engine(on, True)
-    assert not _dimmed(on, 376, 255)   # lit (fault) → undimmed
+    assert not _dimmed(on, 37, 161)   # lit (fault) → undimmed
     off = _surface()
     render.dim_check_engine(off, False)
-    assert _dimmed(off, 376, 255)      # no fault → dimmed
+    assert _dimmed(off, 37, 161)      # no fault → dimmed
 
 
 def test_dim_low_fuel_on_off():
+    # LOW_FUEL_RECT is (13,82,48,46); sample its interior.
     on = _surface()
     render.dim_low_fuel(on, True)
-    assert not _dimmed(on, 440, 255)
+    assert not _dimmed(on, 37, 105)
     off = _surface()
     render.dim_low_fuel(off, False)
-    assert _dimmed(off, 440, 255)
+    assert _dimmed(off, 37, 105)

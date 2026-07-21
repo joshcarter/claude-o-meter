@@ -112,14 +112,25 @@ def test_resets_drawn_in_render_frame():
         snap = Snapshot(last_update=1, five_hour_resets_at=1_780_000_000,
                         seven_day_resets_at=1_780_500_000)
         render.render_frame(surf, snap, cfg)
-        # "7 Day Reset" label sits near (11, 12); expect blue ink in that band.
+        # "5 Hour" title at RESET_5H_LABEL_POS; expect blue ink in that band.
         blue = False
-        for y in range(10, 28):
-            for x in range(11, 110):
+        x0, y0 = layout.RESET_5H_LABEL_POS
+        for y in range(y0, y0 + 16):
+            for x in range(x0, x0 + 70):
                 px = surf.get_at((x, y))
                 r, b = px[0], px[2]
                 if b > 150 and b > r * 2:
                     blue = True
         assert blue
+        # "resets at" sub-label under the 5h fuel bars.
+        sub = False
+        x0, y0 = layout.RESET_5H_SUBLABEL_POS
+        for y in range(y0, y0 + 16):
+            for x in range(x0, x0 + 80):
+                px = surf.get_at((x, y))
+                r, b = px[0], px[2]
+                if b > 150 and b > r * 2:
+                    sub = True
+        assert sub
     finally:
         pygame.quit()
