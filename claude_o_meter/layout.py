@@ -136,11 +136,11 @@ RESET_5H_LABEL_POS = (58, 10)      # "5 Hour"
 RESET_5H_SUBLABEL_POS = (12, 49)  # "resets at"
 RESET_5H_TIME_POS = (79, 44)      # time over "88:88"
 # 7-Day column: title above bars, date below.
-RESET_7D_LABEL_POS = (224, 10)     # "7 Day"
+RESET_7D_LABEL_POS = (225, 10)     # "7 Day"
 RESET_7D_DATE_POS = (176, 44)     # date over "8888  88  88"
 RESET_7D_DASH_Y = 52              # dash ink-top; x is computed from the gaps
 # Fable column: title above bars, date below.
-RESET_FABLE_LABEL_POS = (387, 10)   # "Fable"
+RESET_FABLE_LABEL_POS = (388, 10)   # "Fable"
 RESET_FABLE_DATE_POS = (340, 44)   # date over "8888  88  88"
 RESET_FABLE_DASH_Y = 52            # dash ink-top; x is computed from the gaps
 RESET_LABEL_PT = 15               # Roboto Condensed Bold Italic
