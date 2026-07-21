@@ -44,9 +44,13 @@ def _draw(surface, cfg, tach_lit, fuel_lit, ce_on=False, lf_on=False):
     surface.blit(render._get_background(), (0, 0))
     render.dim_tach(surface, tach_lit, cfg.dim_opacity)
     render.draw_tach_number(surface, round(tach_lit / layout.TACH_SEGMENTS * 99), cfg)
-    render.dim_fuel(surface, fuel_lit, cfg.dim_opacity)  # 7-day gauge (default geometry)
-    render.dim_fuel(surface, fuel_lit, cfg.dim_opacity,
-                    layout.FUEL_5H_DIM_LEFT, layout.FUEL_5H_DIM_RIGHT)  # 5-hour gauge
+    # Three stacked fuel gauges (top→bottom): 5-hour, 7-day, Fable.
+    render.dim_fuel(surface, fuel_lit, layout.FUEL_5H_DIM_TOP, layout.FUEL_5H_DIM_BOTTOM,
+                    cfg.dim_opacity)
+    render.dim_fuel(surface, fuel_lit, layout.FUEL_7D_DIM_TOP, layout.FUEL_7D_DIM_BOTTOM,
+                    cfg.dim_opacity)
+    render.dim_fuel(surface, fuel_lit, layout.FUEL_FABLE_DIM_TOP, layout.FUEL_FABLE_DIM_BOTTOM,
+                    cfg.dim_opacity)
     render.dim_low_fuel(surface, lf_on, cfg.dim_opacity)
     render.dim_check_engine(surface, ce_on, cfg.dim_opacity)
     _present(surface)
