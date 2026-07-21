@@ -15,7 +15,7 @@ from claude_o_meter.state import Snapshot  # noqa: E402
 
 
 # Lit pixel inside the 7-day fuel band (art is C_LIGHT there).
-_FUEL_SAMPLE = (240, 34)
+_FUEL_SAMPLE = (240, 31)  # mid-band of 7-day fuel gauge
 # Lit pixel inside the tach dim region.
 _TACH_SAMPLE = (300, 150)
 

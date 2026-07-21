@@ -70,21 +70,21 @@ FUEL_SEGMENTS = 25
 FUEL_BAR_W = 3
 FUEL_GAP = 2
 FUEL_BAR_PITCH = 5       # px per bar: 3 px lit bar + 2 px gap
-# 5-hour: [15,28]–[138,40]
+# 5-hour: [15,25]–[138,37]
 FUEL_5H_DIM_LEFT = 15
-FUEL_5H_DIM_TOP = 28
+FUEL_5H_DIM_TOP = 25
 FUEL_5H_DIM_RIGHT = 138
-FUEL_5H_DIM_BOTTOM = 40
-# 7-day:  [178,28]–[301,40]
+FUEL_5H_DIM_BOTTOM = 37
+# 7-day:  [178,25]–[301,37]
 FUEL_7D_DIM_LEFT = 178
-FUEL_7D_DIM_TOP = 28
+FUEL_7D_DIM_TOP = 25
 FUEL_7D_DIM_RIGHT = 301
-FUEL_7D_DIM_BOTTOM = 40
-# Fable:  [342,28]–[465,40]
+FUEL_7D_DIM_BOTTOM = 37
+# Fable:  [342,25]–[465,37]
 FUEL_FABLE_DIM_LEFT = 342
-FUEL_FABLE_DIM_TOP = 28
+FUEL_FABLE_DIM_TOP = 25
 FUEL_FABLE_DIM_RIGHT = 465
-FUEL_FABLE_DIM_BOTTOM = 40
+FUEL_FABLE_DIM_BOTTOM = 37
 
 # --- Warning lights (dimmed when OFF; lit = condition true) -----------------
 # Rects are (x, y, w, h). Both lights sit under the tach dim region, so the tach
@@ -132,17 +132,17 @@ MONEY_GROUPS = (
 # Italic.
 #
 # 5-Hour column (under the 5h fuel gauge): title, "resets at", HH:MM value.
-RESET_5H_LABEL_POS = (12, 10)     # "5 Hour"
-RESET_5H_SUBLABEL_POS = (12, 52)  # "resets at"
-RESET_5H_TIME_POS = (81, 47)      # time over "88:88"
+RESET_5H_LABEL_POS = (58, 10)      # "5 Hour"
+RESET_5H_SUBLABEL_POS = (12, 49)  # "resets at"
+RESET_5H_TIME_POS = (79, 44)      # time over "88:88"
 # 7-Day column: title above bars, date below.
-RESET_7D_LABEL_POS = (175, 10)    # "7 Day"
-RESET_7D_DATE_POS = (174, 47)     # date over "8888  88  88"
-RESET_7D_DASH_Y = 55              # dash ink-top; x is computed from the gaps
+RESET_7D_LABEL_POS = (224, 10)     # "7 Day"
+RESET_7D_DATE_POS = (176, 44)     # date over "8888  88  88"
+RESET_7D_DASH_Y = 52              # dash ink-top; x is computed from the gaps
 # Fable column: title above bars, date below.
-RESET_FABLE_LABEL_POS = (339, 10)  # "Fable"
-RESET_FABLE_DATE_POS = (338, 47)   # date over "8888  88  88"
-RESET_FABLE_DASH_Y = 55            # dash ink-top; x is computed from the gaps
+RESET_FABLE_LABEL_POS = (387, 10)   # "Fable"
+RESET_FABLE_DATE_POS = (340, 44)   # date over "8888  88  88"
+RESET_FABLE_DASH_Y = 52            # dash ink-top; x is computed from the gaps
 RESET_LABEL_PT = 15               # Roboto Condensed Bold Italic
 RESET_FIELD_PT = 18               # DSEG date/time fields
 # px trimmed from each DSEG *digit* advance in the date fields, tightening the

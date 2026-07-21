@@ -88,9 +88,10 @@ def test_tach_full_lit_no_dim():
 
 
 # --- dim_fuel: 25 bars, pitch 5 px, horizontal left→right; dim walks in from right.
-# Sampled on the 7-day band [178,28]–[301,40].
+# Sampled on the 7-day band [178,25]–[301,37].
 _7D = (layout.FUEL_7D_DIM_LEFT, layout.FUEL_7D_DIM_TOP,
        layout.FUEL_7D_DIM_RIGHT, layout.FUEL_7D_DIM_BOTTOM)
+_FY = 31  # mid-band y
 
 
 def _dim_7d(surf, lit):
@@ -100,34 +101,34 @@ def _dim_7d(surf, lit):
 def test_fuel_zero_lit_dims_whole_band():
     surf = _surface()
     _dim_7d(surf, 0)
-    assert _dimmed(surf, 179, 34)       # inside dim (x≥178)
-    assert _dimmed(surf, 300, 34)       # up to the right edge (301)
-    assert not _dimmed(surf, 240, 27)   # above the band top (28)
-    assert not _dimmed(surf, 240, 41)   # below the band bottom (40)
-    assert not _dimmed(surf, 177, 34)   # left of the band (178)
-    assert not _dimmed(surf, 302, 34)   # right of the band (301)
+    assert _dimmed(surf, 179, _FY)      # inside dim (x≥178)
+    assert _dimmed(surf, 300, _FY)      # up to the right edge (301)
+    assert not _dimmed(surf, 240, 24)   # above the band top (25)
+    assert not _dimmed(surf, 240, 38)   # below the band bottom (37)
+    assert not _dimmed(surf, 177, _FY)  # left of the band (178)
+    assert not _dimmed(surf, 302, _FY)  # right of the band (301)
 
 
 def test_fuel_one_lit_reveals_left_bar():
     # 1 lit → dim left = 178 + 5 = 183; first pitch unit revealed.
     surf = _surface()
     _dim_7d(surf, 1)
-    assert not _dimmed(surf, 182, 34)   # revealed (left of edge x=183)
-    assert _dimmed(surf, 184, 34)       # dimmed (right of edge)
+    assert not _dimmed(surf, 182, _FY)  # revealed (left of edge x=183)
+    assert _dimmed(surf, 184, _FY)      # dimmed (right of edge)
 
 
 def test_fuel_two_lit_reveals_two_bars():
     # 2 lit → dim left = 178 + 10 = 188.
     surf = _surface()
     _dim_7d(surf, 2)
-    assert not _dimmed(surf, 187, 34)
-    assert _dimmed(surf, 189, 34)
+    assert not _dimmed(surf, 187, _FY)
+    assert _dimmed(surf, 189, _FY)
 
 
 def test_fuel_full_lit_no_dim():
     surf = _surface()
     _dim_7d(surf, 25)
-    assert not _dimmed(surf, 240, 34)
+    assert not _dimmed(surf, 240, _FY)
 
 
 def test_fuel_gauges_are_independent():
@@ -137,9 +138,9 @@ def test_fuel_gauges_are_independent():
     render.dim_fuel(surf, 0,
                     layout.FUEL_FABLE_DIM_LEFT, layout.FUEL_FABLE_DIM_TOP,
                     layout.FUEL_FABLE_DIM_RIGHT, layout.FUEL_FABLE_DIM_BOTTOM)
-    assert _dimmed(surf, 400, 34)       # inside the Fable band
-    assert not _dimmed(surf, 76, 34)     # 5-hour band untouched
-    assert not _dimmed(surf, 240, 34)   # 7-day band untouched
+    assert _dimmed(surf, 400, _FY)      # inside the Fable band
+    assert not _dimmed(surf, 76, _FY)    # 5-hour band untouched
+    assert not _dimmed(surf, 240, _FY)  # 7-day band untouched
 
 
 # --- hole punching + warning lights -----------------------------------------
