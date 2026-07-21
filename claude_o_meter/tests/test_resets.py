@@ -82,11 +82,14 @@ def test_date_dashes_centre_on_pygame_gaps():
         surf = _alpha()
         f_field = render.get_font(layout.FONT_MONEY, layout.RESET_FIELD_PT)
         f_dash = render.get_font(layout.FONT_LABEL, layout.DASH_PT)
+        track = layout.RESET_DATE_TRACKING
         render._draw_date_dashes(surf, layout.RESET_7D_DATE_POS,
-                                 layout.RESET_7D_DASH_Y, f_field, f_dash)
-        # Expected gap centres from the same advance math the renderer uses.
-        a, sp = f_field.size("8")[0], f_field.size(" ")[0]
-        ghost_ink = f_field.render(layout.DATE_GHOST, True, layout.C_LIGHT).get_bounding_rect()
+                                 layout.RESET_7D_DASH_Y, f_field, f_dash, track)
+        # Expected gap centres from the same advance math the renderer uses — the
+        # digit advance is condensed by `track`, the inter-group spaces are not.
+        a, sp = f_field.size("8")[0] - track, f_field.size(" ")[0]
+        ghost_ink = render._dseg_surface(f_field, layout.DATE_GHOST,
+                                         layout.C_LIGHT, track).get_bounding_rect()
         ox = layout.RESET_7D_DATE_POS[0] - ghost_ink.x
         gaps = [ox + 4 * a + sp, ox + 6 * a + 3 * sp]
         # Exactly two dashes were drawn: two disjoint ink clusters, each straddling

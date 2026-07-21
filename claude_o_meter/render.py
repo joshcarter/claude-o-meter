@@ -244,21 +244,46 @@ def draw_money(surface, snapshot, cfg):
         draw_money_group(surface, getattr(snapshot, field), label, group, cfg)
 
 
-def draw_dseg_string(surface, ghost_str, live_str, font, pos, cfg):
+def _render_condensed(font, text, color, tracking):
+    """Render ``text`` with each non-space glyph's advance reduced by ``tracking``
+    px — tightening the digits within a group while leaving the inter-group
+    spaces (and the dash gaps) intact. Returns a transparent surface. DSEG digits
+    are monospaced, so this just narrows the field toward the tach arc."""
+    def step(ch):
+        return font.size(ch)[0] - (0 if ch == " " else tracking)
+    width = sum(step(ch) for ch in text) + tracking  # slack for the last glyph
+    surf = pygame.Surface((max(1, width), font.get_height()), pygame.SRCALPHA)
+    x = 0
+    for ch in text:
+        surf.blit(font.render(ch, True, color), (x, 0))
+        x += step(ch)
+    return surf
+
+
+def _dseg_surface(font, text, color, tracking):
+    """The DSEG glyph surface for ``text`` — condensed when ``tracking`` > 0,
+    otherwise the font's own render (unchanged advances)."""
+    if tracking:
+        return _render_condensed(font, text, color, tracking)
+    return font.render(text, True, color)
+
+
+def draw_dseg_string(surface, ghost_str, live_str, font, pos, cfg, tracking=0):
     """Draw a fixed-structure DSEG readout: the dim all-segments ``ghost_str``
     with ``live_str`` (same length/structure) bright over it. The ghost's ink
     top-left is anchored at ``pos`` and the live string shares that origin, so
-    its digits register on the ghost. ``live_str`` empty → ghost only."""
+    its digits register on the ghost. ``live_str`` empty → ghost only.
+    ``tracking`` > 0 condenses both layers identically (see ``_render_condensed``)."""
     ghost_color = _dim_color(layout.C_LIGHT, cfg.dim_opacity)
-    ghost = font.render(ghost_str, True, ghost_color)
+    ghost = _dseg_surface(font, ghost_str, ghost_color, tracking)
     ink = ghost.get_bounding_rect()
     origin = (pos[0] - ink.x, pos[1] - ink.y)
     surface.blit(ghost, origin)
     if live_str:
-        surface.blit(font.render(live_str, True, layout.C_LIGHT), origin)
+        surface.blit(_dseg_surface(font, live_str, layout.C_LIGHT, tracking), origin)
 
 
-def _draw_date_dashes(surface, field_pos, dash_y, f_field, f_dash):
+def _draw_date_dashes(surface, field_pos, dash_y, f_field, f_dash, tracking=0):
     """Draw the two "-" separators of a date readout, centred on the group gaps
     as pygame actually lays out the ``DATE_GHOST`` — not at fixed art x's.
 
@@ -266,10 +291,11 @@ def _draw_date_dashes(surface, field_pos, dash_y, f_field, f_dash):
     renders a few px wider than Affinity's sub-pixel layout and the gaps drift
     right (growing with each group). Measuring the advance here keeps the dashes
     in the gaps at any font/size; only the vertical ``dash_y`` comes from layout.
+    ``tracking`` matches the field's condensing so the gap math tracks the digits.
     """
-    a = f_field.size("8")[0]              # DSEG digits are monospaced
-    sp = f_field.size(" ")[0]
-    ghost_ink = f_field.render(layout.DATE_GHOST, True, layout.C_LIGHT).get_bounding_rect()
+    a = f_field.size("8")[0] - tracking   # DSEG digits are monospaced (condensed)
+    sp = f_field.size(" ")[0]             # inter-group spaces are not condensed
+    ghost_ink = _dseg_surface(f_field, layout.DATE_GHOST, layout.C_LIGHT, tracking).get_bounding_rect()
     origin_x = field_pos[0] - ghost_ink.x  # matches draw_dseg_string's blit origin
     # DATE_GHOST = "8888  88  88": gap 1 follows 4 digits, gap 2 follows 4+2 digits.
     gaps = (origin_x + 4 * a + sp, origin_x + 6 * a + 3 * sp)
@@ -291,17 +317,20 @@ def draw_resets(surface, snapshot, cfg):
     f_dash = get_font(layout.FONT_LABEL, layout.DASH_PT)
     off = cfg.utc_offset_hours
 
+    track = layout.RESET_DATE_TRACKING
     _draw_ink_topleft(surface, "7 Day Reset", f_label, light, layout.RESET_7D_LABEL_POS)
     draw_dseg_string(surface, layout.DATE_GHOST,
                      gauges.fmt_date(snapshot.seven_day_resets_at, off),
-                     f_field, layout.RESET_7D_DATE_POS, cfg)
-    _draw_date_dashes(surface, layout.RESET_7D_DATE_POS, layout.RESET_7D_DASH_Y, f_field, f_dash)
+                     f_field, layout.RESET_7D_DATE_POS, cfg, tracking=track)
+    _draw_date_dashes(surface, layout.RESET_7D_DATE_POS, layout.RESET_7D_DASH_Y,
+                      f_field, f_dash, track)
 
     _draw_ink_topleft(surface, "Fable Reset", f_label, light, layout.RESET_FABLE_LABEL_POS)
     draw_dseg_string(surface, layout.DATE_GHOST,
                      gauges.fmt_date(snapshot.fable_resets_at, off),
-                     f_field, layout.RESET_FABLE_DATE_POS, cfg)
-    _draw_date_dashes(surface, layout.RESET_FABLE_DATE_POS, layout.RESET_FABLE_DASH_Y, f_field, f_dash)
+                     f_field, layout.RESET_FABLE_DATE_POS, cfg, tracking=track)
+    _draw_date_dashes(surface, layout.RESET_FABLE_DATE_POS, layout.RESET_FABLE_DASH_Y,
+                      f_field, f_dash, track)
 
     _draw_ink_topleft(surface, "5 Hour Reset", f_label, light, layout.RESET_5H_LABEL_POS)
     five = snapshot.five_hour_resets_at

@@ -132,6 +132,10 @@ RESET_5H_LABEL_POS = (12, 99)     # "5 Hour Reset"
 RESET_5H_TIME_POS = (11, 115)     # time over "88:88"
 RESET_LABEL_PT = 15
 RESET_FIELD_PT = 18               # DSEG date/time fields (was 20)
+# px trimmed from each DSEG *digit* advance in the date fields, tightening the
+# digits within a group so the field clears the tach arc. Inter-group spaces
+# (and thus the dash gaps) are left alone. See render._render_condensed.
+RESET_DATE_TRACKING = 2
 DASH_PT = 20
 DATE_GHOST = "8888  88  88"
 TIME_GHOST = "88:88"
