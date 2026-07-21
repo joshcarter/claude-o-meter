@@ -1,7 +1,12 @@
 """Unit tests for poller helpers that don't need the network loop."""
 
 from claude_o_meter.faults import ERR_AUTH, ERR_STALE
-from claude_o_meter.poller import STALE_AFTER, _iso_to_unix, _mark_stale_if_aged
+from claude_o_meter.poller import (
+    STALE_AFTER,
+    _extract_fable,
+    _iso_to_unix,
+    _mark_stale_if_aged,
+)
 from claude_o_meter.state import Snapshot
 
 
@@ -42,3 +47,30 @@ def test_specific_error_is_not_clobbered():
     snap = Snapshot(error=ERR_AUTH, last_update=1000)
     _mark_stale_if_aged(snap, 1000 + STALE_AFTER + 1)
     assert snap.error == ERR_AUTH
+
+
+def test_extract_fable_from_limits():
+    """Fable now arrives in limits[] as the model-scoped weekly entry, keyed by
+    scope.model.display_name — not a top-level seven_day_* field."""
+    data = {
+        "limits": [
+            {"kind": "session", "percent": 47, "scope": None},
+            {"kind": "weekly_all", "percent": 10, "scope": None},
+            {
+                "kind": "weekly_scoped",
+                "percent": 3,
+                "resets_at": "2026-07-26T05:59:59+00:00",
+                "scope": {"model": {"id": None, "display_name": "Fable"}},
+            },
+        ]
+    }
+    pct, resets = _extract_fable(data)
+    assert pct == 3.0
+    assert resets == "2026-07-26T05:59:59+00:00"
+
+
+def test_extract_fable_absent_returns_none():
+    # No limits[] (older payload) and a limits[] without a Fable scope both yield
+    # (None, None) so the gauge reads empty rather than crashing.
+    assert _extract_fable({}) == (None, None)
+    assert _extract_fable({"limits": [{"kind": "session", "percent": 5, "scope": None}]}) == (None, None)

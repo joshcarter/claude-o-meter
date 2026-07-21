@@ -143,25 +143,23 @@ def dim_tach(surface, lit, opacity=None):
     )
 
 
-def dim_fuel(surface, lit, opacity=None, left=None, right=None):
-    """Dim the un-lit (top) portion of a fuel gauge.
+def dim_fuel(surface, lit, top, bottom, opacity=None, left=None, right=None):
+    """Dim the un-lit (top) portion of one stacked horizontal-bar fuel gauge.
 
-    ``lit`` = segments lit (0..FUEL_SEGMENTS). The dim rectangle is pinned at
-    the top; its bottom edge = FUEL_DIM_BOTTOM0 − FUEL_PITCH·lit retreats upward
-    as fuel is revealed bottom→top. ``left``/``right`` select which gauge column
-    to dim, defaulting to the 7-day gauge.
+    ``lit`` = bars lit (0..FUEL_SEGMENTS), revealed bottom→top. The dim rectangle
+    spans the shared column [left..right] and is pinned at the band ``top``; its
+    height = FUEL_BAR_PITCH·(FUEL_SEGMENTS − lit), clamped to the band height
+    (``bottom − top``) so 0 lit dims the whole band and a full gauge dims nothing.
+    ``top``/``bottom`` select which stacked gauge (5H/7D/Fable); ``left``/``right``
+    default to the shared column.
     """
     if left is None:
-        left = layout.FUEL_7D_DIM_LEFT
+        left = layout.FUEL_DIM_LEFT
     if right is None:
-        right = layout.FUEL_7D_DIM_RIGHT
+        right = layout.FUEL_DIM_RIGHT
     lit = max(0, min(layout.FUEL_SEGMENTS, int(round(lit))))
-    bottom = layout.FUEL_DIM_BOTTOM0 - layout.FUEL_PITCH * lit
-    dim_rect(
-        surface,
-        (left, layout.FUEL_DIM_TOP, right - left, bottom - layout.FUEL_DIM_TOP),
-        opacity,
-    )
+    dim_h = min(bottom - top, layout.FUEL_BAR_PITCH * (layout.FUEL_SEGMENTS - lit))
+    dim_rect(surface, (left, top, right - left, dim_h), opacity)
 
 
 def dim_check_engine(surface, on, opacity=None):
@@ -261,10 +259,11 @@ def draw_dseg_string(surface, ghost_str, live_str, font, pos, cfg):
 
 
 def draw_resets(surface, snapshot, cfg):
-    """Static labels plus the 7-day reset date and 5-hour reset time readouts,
-    each a DSEG value over its dim ghost. Always drawn (top area, independent of
-    the fault state); when a timestamp is missing the live string is blank and
-    only the ghost shows."""
+    """Static labels plus the three reset readouts — 7-Day date, Fable date,
+    5-Hour time — each a DSEG value over its dim ghost. Always drawn (top area,
+    independent of the fault state); when a timestamp is missing the live string
+    is blank and only the ghost shows. 7-Day and Fable are weekly windows shown
+    as dates (two dashes overlay the group gaps); 5-Hour is a time."""
     light = layout.C_LIGHT
     f_label = get_font(layout.FONT_LABEL, layout.RESET_LABEL_PT)
     f_field = get_font(layout.FONT_MONEY, layout.RESET_FIELD_PT)
@@ -275,17 +274,21 @@ def draw_resets(surface, snapshot, cfg):
     draw_dseg_string(surface, layout.DATE_GHOST,
                      gauges.fmt_date(snapshot.seven_day_resets_at, off),
                      f_field, layout.RESET_7D_DATE_POS, cfg)
+    _draw_ink_topleft(surface, "-", f_dash, light, layout.RESET_7D_DASH_1_POS)
+    _draw_ink_topleft(surface, "-", f_dash, light, layout.RESET_7D_DASH_2_POS)
+
+    _draw_ink_topleft(surface, "Fable Reset", f_label, light, layout.RESET_FABLE_LABEL_POS)
+    draw_dseg_string(surface, layout.DATE_GHOST,
+                     gauges.fmt_date(snapshot.fable_resets_at, off),
+                     f_field, layout.RESET_FABLE_DATE_POS, cfg)
+    _draw_ink_topleft(surface, "-", f_dash, light, layout.RESET_FABLE_DASH_1_POS)
+    _draw_ink_topleft(surface, "-", f_dash, light, layout.RESET_FABLE_DASH_2_POS)
 
     _draw_ink_topleft(surface, "5 Hour Reset", f_label, light, layout.RESET_5H_LABEL_POS)
     five = snapshot.five_hour_resets_at
     draw_dseg_string(surface, layout.TIME_GHOST,
                      gauges.fmt_hhmm(five, off) if five else "",
                      f_field, layout.RESET_5H_TIME_POS, cfg)
-
-    _draw_ink_topleft(surface, "-", f_dash, light, layout.DASH_1_POS)
-    _draw_ink_topleft(surface, "-", f_dash, light, layout.DASH_2_POS)
-    _draw_ink_topleft(surface, "7D", f_label, light, layout.FUEL_7D_LABEL_POS)
-    _draw_ink_topleft(surface, "5H", f_label, light, layout.FUEL_5H_LABEL_POS)
 
 
 def _dim_color(color, opacity):
@@ -326,14 +329,18 @@ def render_frame(surface, snapshot, cfg):
 
     dim_tach(surface, gauges.tach_position(snapshot.five_hour_redline_ratio), opacity)
     draw_tach_number(surface, gauges.tach_number(snapshot.five_hour_redline_ratio), cfg)
-    dim_fuel(surface, gauges.fuel_segments(snapshot.seven_day_pct, layout.FUEL_SEGMENTS),
-             opacity, layout.FUEL_7D_DIM_LEFT, layout.FUEL_7D_DIM_RIGHT)
+    # Three stacked fuel gauges (top→bottom): 5-hour, 7-day, Fable.
     dim_fuel(surface, gauges.fuel_segments(snapshot.five_hour_pct, layout.FUEL_SEGMENTS),
-             opacity, layout.FUEL_5H_DIM_LEFT, layout.FUEL_5H_DIM_RIGHT)
+             layout.FUEL_5H_DIM_TOP, layout.FUEL_5H_DIM_BOTTOM, opacity)
+    dim_fuel(surface, gauges.fuel_segments(snapshot.seven_day_pct, layout.FUEL_SEGMENTS),
+             layout.FUEL_7D_DIM_TOP, layout.FUEL_7D_DIM_BOTTOM, opacity)
+    dim_fuel(surface, gauges.fuel_segments(snapshot.fable_pct, layout.FUEL_SEGMENTS),
+             layout.FUEL_FABLE_DIM_TOP, layout.FUEL_FABLE_DIM_BOTTOM, opacity)
 
-    # Low-fuel: lit when either window drops below 15% remaining (util ≥ 85%). (TD-3.6)
+    # Low-fuel: lit when any window drops below 15% remaining (util ≥ 85%). (TD-3.6)
     low_fuel_on = ((snapshot.seven_day_pct or 0.0) >= 85.0
-                   or (snapshot.five_hour_pct or 0.0) >= 85.0)
+                   or (snapshot.five_hour_pct or 0.0) >= 85.0
+                   or (snapshot.fable_pct or 0.0) >= 85.0)
     dim_low_fuel(surface, low_fuel_on, opacity)
 
     # Reset date/time readouts + static labels (top area, always drawn). (TD-3.7.b)

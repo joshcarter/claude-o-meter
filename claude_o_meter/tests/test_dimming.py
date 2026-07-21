@@ -83,35 +83,57 @@ def test_tach_full_lit_no_dim():
     assert not _dimmed(surf, 200, 150)
 
 
-# --- dim_fuel (default = 7D gauge): bottom edge = 220 - 8*lit, x 447..461, top 63
+# --- dim_fuel: 15 bars, pitch 3 px, shared column x 423..455, filled bottom→top.
+# Sampled on the 7-day band (top 107, bottom 151) at x=440.
+_7D_TOP = layout.FUEL_7D_DIM_TOP
+_7D_BOT = layout.FUEL_7D_DIM_BOTTOM
 
-def test_fuel_zero_lit_dims_to_y220():
+
+def _dim_7d(surf, lit):
+    render.dim_fuel(surf, lit, _7D_TOP, _7D_BOT)
+
+
+def test_fuel_zero_lit_dims_whole_band():
     surf = _surface()
-    render.dim_fuel(surf, 0)
-    assert _dimmed(surf, 454, 64)      # just below top (63)
-    assert _dimmed(surf, 454, 219)     # near the bottom (220)
-    assert not _dimmed(surf, 454, 62)  # above the dim top
-    assert not _dimmed(surf, 445, 150)  # left of the gauge (447)
+    _dim_7d(surf, 0)
+    assert _dimmed(surf, 440, 108)      # just below the band top (107)
+    assert _dimmed(surf, 440, 150)      # bottom bar dimmed too
+    assert not _dimmed(surf, 440, 106)  # above the band top
+    assert not _dimmed(surf, 420, 130)  # left of the column (423)
+    assert not _dimmed(surf, 456, 130)  # right of the column (455)
 
 
-def test_fuel_one_lit_bottom_at_y212():
+def test_fuel_one_lit_reveals_bottom_bar():
+    # 1 lit → dim height = 3*(15-1) = 42, so dim covers 107..148; bottom bar
+    # (149,150) is revealed.
     surf = _surface()
-    render.dim_fuel(surf, 1)
-    assert _dimmed(surf, 454, 211)     # still dimmed above the edge
-    assert not _dimmed(surf, 454, 213)  # revealed below the edge (y>212)
+    _dim_7d(surf, 1)
+    assert _dimmed(surf, 440, 148)      # still dimmed above the edge
+    assert not _dimmed(surf, 440, 150)  # revealed bottom bar
 
 
-def test_fuel_two_lit_bottom_at_y204():
+def test_fuel_two_lit_reveals_two_bars():
+    # 2 lit → dim height 39, covers 107..145; bars at (146,147) and (149,150) lit.
     surf = _surface()
-    render.dim_fuel(surf, 2)
-    assert _dimmed(surf, 454, 203)
-    assert not _dimmed(surf, 454, 205)
+    _dim_7d(surf, 2)
+    assert _dimmed(surf, 440, 145)
+    assert not _dimmed(surf, 440, 147)
 
 
 def test_fuel_full_lit_no_dim():
     surf = _surface()
-    render.dim_fuel(surf, 20)
-    assert not _dimmed(surf, 454, 150)
+    _dim_7d(surf, 15)
+    assert not _dimmed(surf, 440, 130)
+
+
+def test_fuel_stacked_bands_are_independent():
+    # A gauge only dims its own band: an empty Fable gauge must not touch the
+    # 5-hour band above it, nor vice-versa.
+    surf = _surface()
+    render.dim_fuel(surf, 0, layout.FUEL_FABLE_DIM_TOP, layout.FUEL_FABLE_DIM_BOTTOM)
+    assert _dimmed(surf, 440, 178)      # inside the Fable band
+    assert not _dimmed(surf, 440, 50)   # 5-hour band untouched
+    assert not _dimmed(surf, 440, 130)  # 7-day band untouched
 
 
 # --- hole punching + warning lights -----------------------------------------

@@ -13,6 +13,14 @@ CREATE TABLE IF NOT EXISTS samples (
 CREATE INDEX IF NOT EXISTS samples_ts ON samples(ts);
 """
 
+# Columns added after the table's original shape. CREATE TABLE IF NOT EXISTS
+# never alters an existing table, so a deployment that predates a column keeps
+# the old schema; each entry here is applied with ALTER TABLE ADD COLUMN when
+# absent. ``fable`` carries the weekly Fable-window utilization (see poller).
+_MIGRATIONS = (
+    ("fable", "REAL"),
+)
+
 
 class Store:
     """Sample history backed by one long-lived SQLite connection.
@@ -46,12 +54,26 @@ class Store:
         conn.execute("PRAGMA synchronous=NORMAL")
         return conn
 
+    def _migrate(self, conn: sqlite3.Connection) -> None:
+        """Add any post-original columns that an existing table is missing.
+
+        Idempotent: newly-created tables already have every column (they came
+        from the same package version), so this only fires on DBs written by an
+        older build. ``ALTER TABLE ADD COLUMN`` backfills existing rows with
+        NULL, which the ``recent_*`` queries already skip."""
+        have = {row[1] for row in conn.execute("PRAGMA table_info(samples)")}
+        with conn:
+            for name, decl in _MIGRATIONS:
+                if name not in have:
+                    conn.execute(f"ALTER TABLE samples ADD COLUMN {name} {decl}")
+
     def _open(self) -> sqlite3.Connection:
         import logging
         try:
             conn = self._connect()
             with conn:
                 conn.executescript(_SCHEMA)
+            self._migrate(conn)
             return conn
         except Exception as exc:
             logging.error("DB init failed, recreating: %s", exc)
@@ -61,6 +83,7 @@ class Store:
             conn = self._connect()
             with conn:
                 conn.executescript(_SCHEMA)
+            self._migrate(conn)
             return conn
 
     def insert(
@@ -69,11 +92,15 @@ class Store:
         five_hour: float,
         seven_day: float,
         seven_day_opus: Optional[float],
+        fable: Optional[float] = None,
     ) -> None:
+        # Columns are named (not positional VALUES) so the row stays correct as
+        # migrations widen the table — ``seven_day_opus`` is retained but unused.
         with self._conn:
             self._conn.execute(
-                "INSERT INTO samples VALUES (?, ?, ?, ?)",
-                (ts, five_hour, seven_day, seven_day_opus),
+                "INSERT INTO samples (ts, five_hour, seven_day, seven_day_opus, fable) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (ts, five_hour, seven_day, seven_day_opus, fable),
             )
 
     def recent_five_hour(self, since_ts: int) -> list[tuple[int, float]]:
@@ -85,6 +112,12 @@ class Store:
     def recent_seven_day(self, since_ts: int) -> list[tuple[int, float]]:
         return self._conn.execute(
             "SELECT ts, seven_day FROM samples WHERE ts >= ? AND seven_day IS NOT NULL ORDER BY ts",
+            (since_ts,),
+        ).fetchall()
+
+    def recent_fable(self, since_ts: int) -> list[tuple[int, float]]:
+        return self._conn.execute(
+            "SELECT ts, fable FROM samples WHERE ts >= ? AND fable IS NOT NULL ORDER BY ts",
             (since_ts,),
         ).fetchall()
 

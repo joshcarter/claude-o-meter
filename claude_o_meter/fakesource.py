@@ -47,6 +47,7 @@ def fake_values(elapsed, now):
 
     five_pct = 40.0 + 40.0 * math.sin(2 * math.pi * phase)            # 0..80
     seven_pct = 50.0 + 45.0 * math.sin(2 * math.pi * phase + 1.0)     # 5..95
+    fable_pct = 45.0 + 45.0 * math.sin(2 * math.pi * phase + 2.5)     # 0..90
 
     five_hours_remaining = 4.0
     seven_days_remaining = 5.0 * 24.0
@@ -54,6 +55,9 @@ def fake_values(elapsed, now):
     five_burn = five_pct * 0.2
     seven_sustainable = max((100.0 - seven_pct) / seven_days_remaining, 0.001)
     seven_burn = seven_pct * 0.01
+    # Fable is a weekly window like seven_day — same slow burn shape.
+    fable_sustainable = max((100.0 - fable_pct) / seven_days_remaining, 0.001)
+    fable_burn = fable_pct * 0.01
 
     extra_used = 5.0 + 5.0 * math.sin(2 * math.pi * phase + 2.0)      # $0–$10
 
@@ -68,6 +72,11 @@ def fake_values(elapsed, now):
         "seven_day_burn_rate": seven_burn,
         "seven_day_sustainable_rate": seven_sustainable,
         "seven_day_redline_ratio": min(seven_burn / seven_sustainable, 10.0),
+        "fable_pct": fable_pct,
+        "fable_resets_at": now + int(seven_days_remaining * 3600),
+        "fable_burn_rate": fable_burn,
+        "fable_sustainable_rate": fable_sustainable,
+        "fable_redline_ratio": min(fable_burn / fable_sustainable, 10.0),
         "extra_usage_used": round(extra_used, 2),
         "extra_usage_limit": 20.0,
         "extra_usage_enabled": True,

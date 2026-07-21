@@ -27,13 +27,25 @@ def test_tach_sweeps_from_zero_to_redline():
 
 def test_fuel_drains_and_crosses_low_threshold():
     snaps = _snapshots()
-    segs = [fuel_segments(s.seven_day_pct) for s in snaps]
+    segs = [fuel_segments(s.seven_day_pct) for s in snaps]  # 15-bar gauge
     assert min(segs) <= 2.0          # near empty
-    assert max(segs) >= 18.0         # near full
-    # The low-fuel light (either window's utilisation ≥ 85%) both lights and clears.
-    low = [(s.seven_day_pct or 0.0) >= 85.0 or (s.five_hour_pct or 0.0) >= 85.0
+    assert max(segs) >= 13.0         # near full (7d util bottoms out ~5%)
+    # The low-fuel light (any window's utilisation ≥ 85%) both lights and clears.
+    low = [(s.seven_day_pct or 0.0) >= 85.0
+           or (s.five_hour_pct or 0.0) >= 85.0
+           or (s.fable_pct or 0.0) >= 85.0
            for s in snaps]
     assert any(low) and not all(low)
+
+
+def test_fable_gauge_sweeps():
+    # The offline demo must exercise the third gauge too, crossing the low-fuel
+    # threshold so its warning contribution is seen.
+    snaps = _snapshots()
+    segs = [fuel_segments(s.fable_pct) for s in snaps]
+    assert min(segs) <= 2.0
+    assert max(segs) >= 13.0
+    assert any((s.fable_pct or 0.0) >= 85.0 for s in snaps)
 
 
 def test_money_and_resets_oscillate():

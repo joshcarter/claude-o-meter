@@ -12,6 +12,9 @@ dist/
 sample-usage.json
 sample-prepaid-credits.json
 
+# Raw endpoint captures from tools/capture_usage.py (diff against the samples)
+*-capture.json
+
 # Generated code-review output
 reviews/
 

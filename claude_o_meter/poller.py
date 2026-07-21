@@ -221,6 +221,30 @@ def _compute_seven_day_burn(
     )
 
 
+def _compute_fable_burn(store: Store) -> Optional[float]:
+    # Fable is a weekly window like seven_day, so it uses the same slow-moving
+    # baseline and 1-hour minimum span before a slope is trusted.
+    return _burn_rate(store.recent_fable(int(time.time()) - SEVEN_DAY_BURN_BASELINE), 1.0)
+
+
+def _extract_fable(data: dict) -> tuple[Optional[float], Optional[str]]:
+    """Pull the Fable window's (utilization %, resets_at) from the usage payload.
+
+    Fable is no longer a top-level ``seven_day_*`` field; it arrives in the
+    ``limits[]`` array as the model-scoped weekly entry whose
+    ``scope.model.display_name`` is ``"Fable"``. Returns ``(None, None)`` when no
+    such entry is present (older payload shape, or Fable not surfaced for this
+    account) so the gauge reads empty rather than crashing.
+    """
+    for entry in data.get("limits") or ():
+        scope = entry.get("scope") or {}
+        model = scope.get("model") or {}
+        if model.get("display_name") == "Fable":
+            pct = entry.get("percent")
+            return (float(pct) if pct is not None else None), entry.get("resets_at")
+    return None, None
+
+
 def _fmt_ratio(ratio: Optional[float]) -> str:
     return "n/a" if ratio is None else "{:.2f}".format(ratio)
 
@@ -332,8 +356,9 @@ async def polling_loop(store: Store) -> None:
                     five_pct = float(fh["utilization"])
                     seven_pct = float(sd["utilization"])
                     opus_pct = float(sdo["utilization"]) if sdo else None
+                    fable_pct, fable_resets_raw = _extract_fable(data)
 
-                    store.insert(now, five_pct, seven_pct, opus_pct)
+                    store.insert(now, five_pct, seven_pct, opus_pct, fable_pct)
                     # Prune is a DELETE — a write — and running it every poll is
                     # needless SD-card churn. Batching to ~hourly drops ~98% of
                     # the delete traffic; the table just carries up to PRUNE_EVERY
@@ -358,6 +383,12 @@ async def polling_loop(store: Store) -> None:
                     seven_sustainable, seven_ratio = _redline(
                         seven_pct, seven_resets, seven_burn, now
                     )
+                    fable_resets = _iso_to_unix(fable_resets_raw)
+                    fable_burn = _compute_fable_burn(store)
+                    fable_sustainable, fable_ratio = _redline(
+                        fable_pct if fable_pct is not None else 0.0,
+                        fable_resets, fable_burn, now
+                    )
 
                     state.snapshot.five_hour_pct = five_pct
                     state.snapshot.five_hour_resets_at = five_resets
@@ -375,6 +406,11 @@ async def polling_loop(store: Store) -> None:
                     state.snapshot.seven_day_opus_resets_at = (
                         _iso_to_unix(sdo["resets_at"]) if sdo else None
                     )
+                    state.snapshot.fable_pct = fable_pct
+                    state.snapshot.fable_resets_at = fable_resets
+                    state.snapshot.fable_burn_rate = fable_burn
+                    state.snapshot.fable_sustainable_rate = fable_sustainable
+                    state.snapshot.fable_redline_ratio = fable_ratio
 
                     # TD-12.1 + TD-12.3: parse extra_usage from usage response
                     eu = data.get("extra_usage") or {}

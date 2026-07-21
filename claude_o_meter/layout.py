@@ -57,21 +57,25 @@ TACH_DIM_BOTTOM = 286
 # live value bright over it. NUM_POS is the top-left of the visible "88".
 NUM_POS = (190, 172)
 
-# --- Vertical 20-segment fuel gauges (top-pinned dim) -----------------------
-# Two side-by-side gauges: 7-day (right) and 5-hour (left). For each,
-# remaining = clamp(100 − utilization, 0, 100), linear. Lit segments fill
-# bottom→top; the dim rectangle is pinned at the top (FUEL_DIM_TOP) and its
-# bottom edge retreats upward as fuel is revealed: bottom edge at
-# FUEL_DIM_BOTTOM0 when fully dimmed (0 lit), rising by FUEL_PITCH per segment.
-# Both gauges share the vertical geometry; only the left/right edges differ.
-FUEL_SEGMENTS = 20
-FUEL_DIM_BOTTOM0 = 220  # dim bottom edge with 0 segments lit
-FUEL_PITCH = 8          # px the bottom edge retreats per lit segment
-FUEL_DIM_TOP = 63
-FUEL_7D_DIM_LEFT = 447   # 7-day gauge: (447,63)–(461,220)
-FUEL_7D_DIM_RIGHT = 461
-FUEL_5H_DIM_LEFT = 418   # 5-hour gauge: (418,63)–(432,220)
-FUEL_5H_DIM_RIGHT = 432
+# --- 15-segment fuel gauges (three stacked horizontal-bar gauges) -----------
+# Three gauges stacked top→bottom — 5-hour, 7-day, Fable — sharing one x column
+# [FUEL_DIM_LEFT..FUEL_DIM_RIGHT]. In the art each gauge is 15 horizontal bars,
+# 2 px tall with a 1 px black gap between (FUEL_BAR_PITCH = 3 px/bar), so a band
+# spans 15·2 + 14·1 = 44 px. For each gauge remaining = clamp(100 − utilization,
+# 0, 100) maps linearly onto the 15 bars, which fill bottom→top; the dim
+# rectangle is pinned at the band TOP and grows downward by FUEL_BAR_PITCH per
+# *un*-lit bar (see render.dim_fuel) so an empty gauge dims the whole band and a
+# full one dims nothing.
+FUEL_SEGMENTS = 15
+FUEL_BAR_PITCH = 3       # px per bar: 2 px lit bar + 1 px gap
+FUEL_DIM_LEFT = 423
+FUEL_DIM_RIGHT = 455
+FUEL_5H_DIM_TOP = 37        # 5-hour: (423,37)–(455,81)
+FUEL_5H_DIM_BOTTOM = 81
+FUEL_7D_DIM_TOP = 107       # 7-day:  (423,107)–(455,151)
+FUEL_7D_DIM_BOTTOM = 151
+FUEL_FABLE_DIM_TOP = 177    # Fable:  (423,177)–(455,221)
+FUEL_FABLE_DIM_BOTTOM = 221
 
 # --- Warning lights (dimmed when OFF; lit = condition true) -----------------
 # Rects are (x, y, w, h). The check-engine light sits under the tach arc, so the
@@ -110,21 +114,26 @@ MONEY_GROUPS = (
 )
 
 # --- Reset readouts + static labels (always drawn, top area) ----------------
-# Absolute top-left (visible-ink) positions. The two DSEG fields are drawn over
-# a dim all-segments ghost (like the money value), but the date/time always have
-# every digit, so the live string shares the ghost's structure and registers on
-# it without per-cell packing. Labels/dashes are Roboto; fields are DSEG7 Modern
-# Mini Bold Italic 20pt. The "7 Day" by the fuel gauge labels that instrument.
-RESET_7D_LABEL_POS = (11, 12)     # "7 Day Reset"
-RESET_7D_DATE_POS = (11, 30)      # "YYYY  MM  DD" over "8888  88  88"
-RESET_5H_LABEL_POS = (11, 71)     # "5 Hour Reset"
-RESET_5H_TIME_POS = (11, 88)      # "HH:MM" over "88:88"
-DASH_1_POS = (76, 39)
-DASH_2_POS = (116, 39)
-FUEL_7D_LABEL_POS = (446, 42)     # "7D" — labels the 7-day fuel gauge
-FUEL_5H_LABEL_POS = (418, 42)     # "5H" — labels the 5-hour fuel gauge
+# Absolute top-left (visible-ink) positions. Three stacked readouts: 7-Day and
+# Fable are weekly windows shown as dates ("YYYY - MM - DD" over the "8888  88
+# 88" ghost, with two dashes overlaying the group gaps); 5-Hour is a time
+# ("HH:MM" over "88:88"). Each DSEG field is drawn over a dim all-segments ghost;
+# the live string shares the ghost's structure and registers on it without
+# per-cell packing. Labels/dashes are Roboto; fields are DSEG7 Modern Mini Bold
+# Italic. (The "5H"/"7D"/"FA" gauge labels are baked into background.png now, so
+# the renderer no longer draws them.)
+RESET_7D_LABEL_POS = (12, 14)     # "7 Day Reset"
+RESET_7D_DATE_POS = (11, 30)      # date over "8888  88  88"
+RESET_7D_DASH_1_POS = (69.5, 38)
+RESET_7D_DASH_2_POS = (106.5, 38)
+RESET_FABLE_LABEL_POS = (12, 56)  # "Fable Reset"
+RESET_FABLE_DATE_POS = (11, 72)   # date over "8888  88  88"
+RESET_FABLE_DASH_1_POS = (69.5, 80)
+RESET_FABLE_DASH_2_POS = (106.5, 80)
+RESET_5H_LABEL_POS = (12, 99)     # "5 Hour Reset"
+RESET_5H_TIME_POS = (11, 115)     # time over "88:88"
 RESET_LABEL_PT = 15
-RESET_FIELD_PT = 20
+RESET_FIELD_PT = 18               # DSEG date/time fields (was 20)
 DASH_PT = 20
 DATE_GHOST = "8888  88  88"
 TIME_GHOST = "88:88"

@@ -20,6 +20,14 @@ class Snapshot:
     seven_day_redline_ratio: Optional[float] = None
     seven_day_opus_pct: Optional[float] = None
     seven_day_opus_resets_at: Optional[int] = None
+    # Fable: a weekly, model-scoped window sourced from the usage response's
+    # limits[] array (scope.model.display_name == "Fable"). Mirrors the 7-day
+    # fields — same weekly burn/redline treatment.
+    fable_pct: Optional[float] = None
+    fable_resets_at: Optional[int] = None
+    fable_burn_rate: Optional[float] = None  # None = not enough history yet
+    fable_sustainable_rate: Optional[float] = None
+    fable_redline_ratio: Optional[float] = None
     extra_usage_used: Optional[float] = None    # USD
     extra_usage_limit: Optional[float] = None   # USD
     extra_usage_enabled: Optional[bool] = None
