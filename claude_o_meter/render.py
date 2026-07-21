@@ -258,6 +258,27 @@ def draw_dseg_string(surface, ghost_str, live_str, font, pos, cfg):
         surface.blit(font.render(live_str, True, layout.C_LIGHT), origin)
 
 
+def _draw_date_dashes(surface, field_pos, dash_y, f_field, f_dash):
+    """Draw the two "-" separators of a date readout, centred on the group gaps
+    as pygame actually lays out the ``DATE_GHOST`` — not at fixed art x's.
+
+    SDL_ttf rounds each DSEG digit's advance up to a whole pixel, so the field
+    renders a few px wider than Affinity's sub-pixel layout and the gaps drift
+    right (growing with each group). Measuring the advance here keeps the dashes
+    in the gaps at any font/size; only the vertical ``dash_y`` comes from layout.
+    """
+    a = f_field.size("8")[0]              # DSEG digits are monospaced
+    sp = f_field.size(" ")[0]
+    ghost_ink = f_field.render(layout.DATE_GHOST, True, layout.C_LIGHT).get_bounding_rect()
+    origin_x = field_pos[0] - ghost_ink.x  # matches draw_dseg_string's blit origin
+    # DATE_GHOST = "8888  88  88": gap 1 follows 4 digits, gap 2 follows 4+2 digits.
+    gaps = (origin_x + 4 * a + sp, origin_x + 6 * a + 3 * sp)
+    glyph = f_dash.render("-", True, layout.C_LIGHT)
+    ink = glyph.get_bounding_rect()
+    for cx in gaps:
+        surface.blit(glyph, (cx - ink.width / 2 - ink.x, dash_y - ink.y))
+
+
 def draw_resets(surface, snapshot, cfg):
     """Static labels plus the three reset readouts — 7-Day date, Fable date,
     5-Hour time — each a DSEG value over its dim ghost. Always drawn (top area,
@@ -274,15 +295,13 @@ def draw_resets(surface, snapshot, cfg):
     draw_dseg_string(surface, layout.DATE_GHOST,
                      gauges.fmt_date(snapshot.seven_day_resets_at, off),
                      f_field, layout.RESET_7D_DATE_POS, cfg)
-    _draw_ink_topleft(surface, "-", f_dash, light, layout.RESET_7D_DASH_1_POS)
-    _draw_ink_topleft(surface, "-", f_dash, light, layout.RESET_7D_DASH_2_POS)
+    _draw_date_dashes(surface, layout.RESET_7D_DATE_POS, layout.RESET_7D_DASH_Y, f_field, f_dash)
 
     _draw_ink_topleft(surface, "Fable Reset", f_label, light, layout.RESET_FABLE_LABEL_POS)
     draw_dseg_string(surface, layout.DATE_GHOST,
                      gauges.fmt_date(snapshot.fable_resets_at, off),
                      f_field, layout.RESET_FABLE_DATE_POS, cfg)
-    _draw_ink_topleft(surface, "-", f_dash, light, layout.RESET_FABLE_DASH_1_POS)
-    _draw_ink_topleft(surface, "-", f_dash, light, layout.RESET_FABLE_DASH_2_POS)
+    _draw_date_dashes(surface, layout.RESET_FABLE_DATE_POS, layout.RESET_FABLE_DASH_Y, f_field, f_dash)
 
     _draw_ink_topleft(surface, "5 Hour Reset", f_label, light, layout.RESET_5H_LABEL_POS)
     five = snapshot.five_hour_resets_at

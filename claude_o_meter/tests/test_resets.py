@@ -73,6 +73,34 @@ def test_dseg_string_blank_live_shows_ghost_only():
         pygame.quit()
 
 
+def test_date_dashes_centre_on_pygame_gaps():
+    """The date separators must sit in the group gaps as pygame lays out the
+    ghost — SDL_ttf rounds DSEG advances up, so a fixed art x drifts out of the
+    gap. Verify each dash's ink is centred on the measured gap, not the digits."""
+    pygame.init()
+    try:
+        surf = _alpha()
+        f_field = render.get_font(layout.FONT_MONEY, layout.RESET_FIELD_PT)
+        f_dash = render.get_font(layout.FONT_LABEL, layout.DASH_PT)
+        render._draw_date_dashes(surf, layout.RESET_7D_DATE_POS,
+                                 layout.RESET_7D_DASH_Y, f_field, f_dash)
+        # Expected gap centres from the same advance math the renderer uses.
+        a, sp = f_field.size("8")[0], f_field.size(" ")[0]
+        ghost_ink = f_field.render(layout.DATE_GHOST, True, layout.C_LIGHT).get_bounding_rect()
+        ox = layout.RESET_7D_DATE_POS[0] - ghost_ink.x
+        gaps = [ox + 4 * a + sp, ox + 6 * a + 3 * sp]
+        # Exactly two dashes were drawn: two disjoint ink clusters, each straddling
+        # a gap centre (within a couple px of it).
+        for gx in gaps:
+            band = surf.subsurface(pygame.Rect(int(gx) - 6, layout.RESET_7D_DASH_Y - 4, 12, 12))
+            ink = band.get_bounding_rect()
+            assert ink.width > 0
+            centre = int(gx) - 6 + ink.centerx
+            assert abs(centre - gx) <= 2
+    finally:
+        pygame.quit()
+
+
 def test_resets_drawn_in_render_frame():
     pygame.init()
     try:

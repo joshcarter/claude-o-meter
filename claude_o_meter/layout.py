@@ -124,12 +124,10 @@ MONEY_GROUPS = (
 # the renderer no longer draws them.)
 RESET_7D_LABEL_POS = (12, 14)     # "7 Day Reset"
 RESET_7D_DATE_POS = (11, 30)      # date over "8888  88  88"
-RESET_7D_DASH_1_POS = (69.5, 38)
-RESET_7D_DASH_2_POS = (106.5, 38)
+RESET_7D_DASH_Y = 38              # dash ink-top; x is computed from the gaps
 RESET_FABLE_LABEL_POS = (12, 56)  # "Fable Reset"
 RESET_FABLE_DATE_POS = (11, 72)   # date over "8888  88  88"
-RESET_FABLE_DASH_1_POS = (69.5, 80)
-RESET_FABLE_DASH_2_POS = (106.5, 80)
+RESET_FABLE_DASH_Y = 80           # dash ink-top; x is computed from the gaps
 RESET_5H_LABEL_POS = (12, 99)     # "5 Hour Reset"
 RESET_5H_TIME_POS = (11, 115)     # time over "88:88"
 RESET_LABEL_PT = 15
