@@ -302,7 +302,8 @@ def _draw_date_dashes(surface, field_pos, dash_y, f_field, f_dash, tracking=0):
     glyph = f_dash.render("-", True, layout.C_LIGHT)
     ink = glyph.get_bounding_rect()
     for cx in gaps:
-        surface.blit(glyph, (cx - ink.width / 2 - ink.x, dash_y - ink.y))
+        # JDC: the arbitrary +1 and -1 are corrections from visual observation.
+        surface.blit(glyph, (cx - ink.width / 2 - ink.x + 1, dash_y - ink.y - 1))
 
 
 def draw_resets(surface, snapshot, cfg):

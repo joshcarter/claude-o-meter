@@ -135,7 +135,7 @@ RESET_FIELD_PT = 18               # DSEG date/time fields (was 20)
 # px trimmed from each DSEG *digit* advance in the date fields, tightening the
 # digits within a group so the field clears the tach arc. Inter-group spaces
 # (and thus the dash gaps) are left alone. See render._render_condensed.
-RESET_DATE_TRACKING = 2
+RESET_DATE_TRACKING = 1
 DASH_PT = 20
 DATE_GHOST = "8888  88  88"
 TIME_GHOST = "88:88"
