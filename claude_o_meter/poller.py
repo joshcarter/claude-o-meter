@@ -1,10 +1,13 @@
 import asyncio
+import json
 import logging
 import os
+import random
 import time
-from typing import Optional
+from pathlib import Path
+from typing import Any, Optional, cast
 
-from curl_cffi.requests import AsyncSession
+from curl_cffi.requests import AsyncSession, Response
 
 from . import faults
 from .store import Store
@@ -12,6 +15,38 @@ from .store import Store
 log = logging.getLogger(__name__)
 
 CLAUDE_BASE = "https://claude.ai"
+
+# Impersonation profile for curl_cffi. "chrome" tracks the newest profile the
+# installed curl_cffi ships; a pinned old version (this was "chrome124", a
+# Chrome from early 2024) advertises a TLS fingerprint no live browser sends,
+# which is itself an anomaly. Override with CURL_IMPERSONATE if a specific
+# profile ever works better.
+# (cast: curl_cffi types this as a Literal of known profile names, but the value
+# is user-configurable — an unknown name fails loudly at session construction.)
+IMPERSONATE = cast(Any, os.environ.get("CURL_IMPERSONATE") or "chrome")
+
+# Request headers a real claude.ai tab attaches to these XHRs. curl_cffi's
+# impersonation covers the TLS/HTTP2 fingerprint plus User-Agent and the
+# sec-ch-ua family; it knows nothing about the application layer. A Chrome
+# handshake carrying none of Chrome's own request headers is a *louder* bot
+# signal than an honest client would be, so send the generic ones. (The app's
+# private anthropic-client-* headers are deliberately omitted: guessing a wrong
+# value is worse than sending none.)
+BROWSER_HEADERS = {
+    "Accept": "*/*",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Referer": f"{CLAUDE_BASE}/settings/usage",
+    "Sec-Fetch-Dest": "empty",
+    "Sec-Fetch-Mode": "cors",
+    "Sec-Fetch-Site": "same-origin",
+}
+
+# Fraction of the poll interval to jitter by, each way. A process that requests
+# on an exact metronome for months is trivially separable from a browser.
+POLL_JITTER = 0.15
+# How often to re-read the environment while parked on an auth failure.
+AUTH_RECHECK_SECONDS = 60
+
 STALE_AFTER = 300  # 5 minutes
 SEVEN_DAY_BURN_BASELINE = 3 * 3600  # 7d utilization moves slowly; a 30-min delta is just noise
 FIVE_HOUR_BURN_WINDOW = 30 * 60  # regression window for the 5h burn rate
@@ -44,6 +79,123 @@ def _poll_interval() -> int:
     return int(os.environ.get("POLL_INTERVAL_SECONDS", "60"))
 
 
+def _jittered(seconds: float) -> float:
+    """Spread a sleep by ±POLL_JITTER so the cadence isn't a metronome."""
+    return seconds * (1.0 + random.uniform(-POLL_JITTER, POLL_JITTER))
+
+
+def _state_dir() -> Path:
+    """Directory for small poller state files — alongside the sample DB, which
+    is already the service's writable StateDirectory on the Pi."""
+    return Path(os.environ.get("DB_PATH", "./samples.db")).expanduser().resolve().parent
+
+
+def _cookie_path() -> Path:
+    return _state_dir() / "session-cookie.json"
+
+
+def _org_cache_path() -> Path:
+    return _state_dir() / "org-id"
+
+
+def _write_private(path: Path, text: str) -> None:
+    """Write owner-only (0600). Used for anything holding the session cookie."""
+    try:
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, "w") as f:
+            f.write(text)
+    except OSError as exc:
+        log.warning("Could not write %s: %s", path, exc)
+
+
+def _load_session_cookie() -> str:
+    """The sessionKey value to send: the rotated one if we have it, else the env.
+
+    claude.ai can rotate the session cookie via Set-Cookie. Replaying a
+    superseded token is the classic stolen-cookie signal, and the usual server
+    response is to revoke the whole session family — every session, everywhere.
+    So rotations are followed *and persisted*: a restart must not resurrect the
+    original value.
+
+    The file records the env value the chain started from. When the user pastes
+    a fresh sessionKey into the environment the seed no longer matches, so the
+    saved chain is stale and we start over from the env value.
+    """
+    env = _session_key()
+    try:
+        saved = json.loads(_cookie_path().read_text())
+    except (OSError, ValueError):
+        return env
+    if not isinstance(saved, dict) or saved.get("seed") != env:
+        return env
+    return saved.get("current") or env
+
+
+def _save_session_cookie(current: str) -> None:
+    _write_private(_cookie_path(), json.dumps({"seed": _session_key(), "current": current}))
+
+
+def _forget_session_cookie() -> None:
+    """Drop the persisted chain so the next start falls back to the env value."""
+    _cookie_path().unlink(missing_ok=True)
+
+
+def _install_cookie(session: AsyncSession, value: str) -> None:
+    """Seed the session's cookie jar with sessionKey.
+
+    Deliberately *not* passed per-request: in curl_cffi a per-request ``cookies=``
+    is merged over the jar and wins, so a rotated cookie learned from Set-Cookie
+    would be overwritten by the stale value on the very next request. Delete
+    first so a server-set entry on a different domain spelling can't collide
+    with ours (Cookies.get raises CookieConflict on divergent duplicates).
+
+    ``domain``/``secure`` are explicit on purpose. curl_cffi hands the whole jar
+    to libcurl and lets libcurl match domains — but a jar entry with no domain
+    gets the *request* host stamped on it (Cookies.get_cookies_for_curl), so an
+    unscoped credential would follow us anywhere. Secure pins it to https, as
+    the real claude.ai cookie is.
+    """
+    try:
+        session.cookies.delete("sessionKey")
+    except Exception:  # absent, or an ambiguous duplicate — either way, reset it
+        pass
+    session.cookies.set("sessionKey", value, domain=".claude.ai", secure=True)
+
+
+def _rotated_cookie(resp: Response) -> Optional[str]:
+    """A new sessionKey from this response's Set-Cookie, or None.
+
+    ``resp.cookies`` holds only what this response set, so it answers "did the
+    server rotate?" without inspecting the merged jar.
+    """
+    try:
+        return resp.cookies.get("sessionKey")
+    except Exception:
+        return None
+
+
+async def _await_new_session_key(rejected: str) -> None:
+    """Park until CLAUDE_SESSION_KEY differs from the value the server rejected.
+
+    A cookie that came back 401/403 will not start working again, so there is
+    nothing to back off *to*. Retrying it forever — which is what the old
+    exponential backoff did, capped at 5 minutes — is a dead credential replayed
+    against claude.ai indefinitely, which reads as credential stuffing and can
+    extend the very lockout it is reacting to. Watch the environment instead of
+    the network, so a key exported into a running process is picked up without a
+    restart.
+    """
+    while os.environ.get("CLAUDE_SESSION_KEY", "") == rejected:
+        await asyncio.sleep(AUTH_RECHECK_SECONDS)
+
+
+def _read_org_cache() -> Optional[str]:
+    try:
+        return _org_cache_path().read_text().strip() or None
+    except OSError:
+        return None
+
+
 def _parse_cents_usd(raw) -> Optional[float]:
     """Convert a cents value (int or float) to USD. Returns None if raw is None."""
     if raw is None:
@@ -62,26 +214,33 @@ def _currency_ok(value: Optional[str], label: str) -> bool:
 
 
 async def _fetch_org_id(session: AsyncSession) -> Optional[str]:
+    """Resolve the org UUID: pinned env, then disk cache, then the network.
+
+    The cache matters because systemd restarts this service on any crash
+    (Restart=always/RestartSec=5). Without it, a crash loop re-hits
+    /api/organizations every five seconds — a burst of identity lookups that
+    looks nothing like a browser.
+    """
     pinned = os.environ.get("CLAUDE_ORG_ID")
     if pinned:
         return pinned
-    resp = await session.get(
-        f"{CLAUDE_BASE}/api/organizations",
-        cookies={"sessionKey": _session_key()},
-        timeout=15,
-    )
+    cached = _read_org_cache()
+    if cached:
+        return cached
+    resp = await session.get(f"{CLAUDE_BASE}/api/organizations", timeout=15)
     resp.raise_for_status()
     orgs = resp.json()
     if not orgs:
         raise ValueError("No organizations returned")
-    return orgs[0]["uuid"]
+    org_id = orgs[0]["uuid"]
+    _write_private(_org_cache_path(), org_id)
+    return org_id
 
 
 async def _fetch_balance(session: AsyncSession, org_id: str) -> Optional[float]:
     """Fetch prepaid credit balance. Returns USD float or None. Raises on transient errors."""
     resp = await session.get(
         f"{CLAUDE_BASE}/api/organizations/{org_id}/prepaid/credits",
-        cookies={"sessionKey": _session_key()},
         timeout=15,
     )
     if resp.status_code == 404:
@@ -293,14 +452,16 @@ async def polling_loop(store: Store) -> None:
 
     interval = _poll_interval()
     backoff = interval
-    auth_incident_notified = False
     # Start "due" so the balance is fetched on the first successful poll (not
     # ~5 polls / minutes later, which would show $0.00 at startup); the every-N
     # slow cadence applies to subsequent fetches.
     balance_poll_counter = BALANCE_POLL_EVERY
     prune_counter = 0
 
-    async with AsyncSession(impersonate="chrome124") as session:
+    # Empty until the key is known to exist; re-seeded whenever it changes.
+    cookie_value = ""
+
+    async with AsyncSession(impersonate=IMPERSONATE, headers=BROWSER_HEADERS) as session:
         while True:
             # Age-out check runs first so every path (including the 429/auth
             # continues below) gets a chance to mark data stale.
@@ -310,8 +471,15 @@ async def polling_loop(store: Store) -> None:
             # environment while the poller is already running.
             if not os.environ.get("CLAUDE_SESSION_KEY"):
                 state.snapshot.error = faults.ERR_NO_TOKEN
-                await asyncio.sleep(interval)
+                cookie_value = ""
+                await asyncio.sleep(_jittered(interval))
                 continue
+
+            # Seeded once, then carried in the session jar so Set-Cookie
+            # rotations survive (see _install_cookie).
+            if not cookie_value:
+                cookie_value = _load_session_cookie()
+                _install_cookie(session, cookie_value)
 
             try:
                 if state.org_id is None:
@@ -320,21 +488,36 @@ async def polling_loop(store: Store) -> None:
 
                 resp = await session.get(
                     f"{CLAUDE_BASE}/api/organizations/{state.org_id}/usage",
-                    cookies={"sessionKey": _session_key()},
                     timeout=15,
                 )
+
+                rotated = _rotated_cookie(resp)
+                if rotated and rotated != cookie_value:
+                    log.info("claude.ai rotated the session cookie — adopting it")
+                    cookie_value = rotated
+                    _install_cookie(session, cookie_value)
+                    _save_session_cookie(cookie_value)
 
                 if resp.status_code not in (200, 429):
                     log.warning("HTTP %s — body: %.500s", resp.status_code, resp.text)
 
                 if resp.status_code in (401, 403):
-                    log.warning("Auth failure (%s) — %s", resp.status_code, faults.ERR_AUTH)
+                    log.error(
+                        "Auth failure (%s) — %s. Polling stopped: a rejected "
+                        "cookie never recovers, and replaying it looks like "
+                        "credential stuffing. Put a fresh sessionKey in "
+                        "CLAUDE_SESSION_KEY (exported here, or in .env plus a "
+                        "restart).",
+                        resp.status_code,
+                        faults.ERR_AUTH,
+                    )
                     state.snapshot.error = faults.ERR_AUTH
-                    if not auth_incident_notified:
-                        auth_incident_notified = True
-                        log.error("Cookie needs renewal — update CLAUDE_SESSION_KEY and restart")
-                    backoff = min(backoff * 2, 300)
-                    await asyncio.sleep(backoff)
+                    # Any rotated value we were carrying is dead too; drop it so
+                    # a restart begins cleanly from whatever is in the env.
+                    _forget_session_cookie()
+                    await _await_new_session_key(os.environ.get("CLAUDE_SESSION_KEY", ""))
+                    cookie_value = ""
+                    backoff = interval
                     continue
 
                 if resp.status_code == 429:
@@ -429,7 +612,6 @@ async def polling_loop(store: Store) -> None:
 
                     state.snapshot.error = None
                     state.snapshot.last_update = now
-                    auth_incident_notified = False
                     backoff = interval
 
                     log.debug(
@@ -458,7 +640,7 @@ async def polling_loop(store: Store) -> None:
                 state.snapshot.error = faults.ERR_CONNECTION
                 backoff = min(backoff + 30, 120)
 
-            await asyncio.sleep(backoff)
+            await asyncio.sleep(_jittered(backoff))
 
 
 def _iso_to_unix(ts: Optional[str]) -> Optional[int]:

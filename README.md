@@ -42,8 +42,11 @@ reveal demo — tach, fuel, both lights, then the fault messages:
 
 Live mode polls your account, so it needs your `claude.ai` session cookie:
 
-1. Open https://claude.ai signed in, then DevTools → Application → Cookies →
-   `https://claude.ai`, and copy the `sessionKey` value (starts `sk-ant-sid01-...`).
+1. **Use a separate browser profile** (or a private window) to sign in to
+   https://claude.ai, then DevTools → Application → Cookies → `https://claude.ai`,
+   and copy the `sessionKey` value (starts `sk-ant-sid01-...`). Close that window
+   afterwards and don't browse from it again — see *Give the meter its own
+   session* below for why this matters.
 2. Set `DATA_SOURCE = "live"` in `claude_o_meter/config.toml`.
 3. Run with the cookie in the environment:
 
@@ -61,12 +64,44 @@ and restart.
 (`curl_cffi`, used only in live mode, mimics Chrome's TLS fingerprint to get past
 Cloudflare on `claude.ai`.)
 
+### Give the meter its own session
+
+There is no public API for the 5-hour / 7-day window utilization — the Admin API
+covers API-key rate limits and API spend, not subscription windows — so this app
+reads the same private endpoint the claude.ai usage page does, with your session
+cookie. That means it is, to the server, another client on your session, and it
+is worth being a considerate one. Sharing a `sessionKey` between your everyday
+browser and a machine polling around the clock from a different IP is the exact
+shape of a leaked cookie, and the usual server response is to invalidate the
+whole session family — logging you out everywhere.
+
+So: sign in from a **separate browser profile**, take that profile's
+`sessionKey`, and leave the profile alone afterwards. Two sessions that never
+overlap on a device can't be mistaken for one cookie in two places.
+
+The poller holds up its end:
+
+- **Follows cookie rotation.** If claude.ai sends a new `sessionKey` via
+  `Set-Cookie`, the poller adopts it and saves it (owner-only, next to the sample
+  DB) so a restart doesn't replay the superseded value — replaying a rotated
+  token is what triggers session-family revocation. Put a fresh key in
+  `CLAUDE_SESSION_KEY` and the saved chain is discarded automatically.
+- **Stops on a rejected cookie.** A 401/403 parks the poller — it watches
+  `CLAUDE_SESSION_KEY` for a new value instead of retrying a dead credential.
+  Export a fresh key and it resumes without a restart.
+- **Doesn't poll on a metronome.** The interval is jittered ±15%, and the
+  discovered org id is cached to disk so a systemd restart loop doesn't re-hit
+  `/api/organizations` every few seconds.
+- **Sends the browser's own request headers**, not just its TLS fingerprint.
+
+Polling gently helps too: `POLL_SECONDS = 180` is plenty for a 5-hour window.
+
 ## Configuration (`claude_o_meter/config.toml`)
 
 | Key | Default | Notes |
 |-----|---------|-------|
 | `DATA_SOURCE` | `"fake"` | `"fake"` (offline oscillating values) or `"live"` (real polling) |
-| `POLL_SECONDS` | `60` | Poll cadence; in live mode it sets `POLL_INTERVAL_SECONDS` |
+| `POLL_SECONDS` | `180` | Poll cadence; in live mode it sets `POLL_INTERVAL_SECONDS` (jittered ±15%) |
 | `UTC_OFFSET_HOURS` | `0` | Integer offset for displayed clock/date (e.g. `-7` for PDT) |
 | `DISPLAY_MODE` | `"window"` | `"window"` (SDL window on a desktop) or `"framebuffer"` (Pi TFT) |
 | `FB_DEVICE` | `"/dev/fb1"` | Framebuffer device when `DISPLAY_MODE="framebuffer"` |
@@ -83,9 +118,14 @@ The session key and a few overrides come from the environment, not the TOML file
 | Var | Required | Default | Notes |
 |-----|----------|---------|-------|
 | `CLAUDE_SESSION_KEY` | yes (live) | — | `claude.ai` `sessionKey` cookie value |
-| `CLAUDE_ORG_ID` | no | auto-discover | Pin a specific org instead of discovering it |
-| `POLL_INTERVAL_SECONDS` | no | from `POLL_SECONDS` | Poll cadence override |
+| `CLAUDE_ORG_ID` | no | auto-discover | Pin a specific org instead of discovering it (skips the `/api/organizations` call entirely) |
+| `POLL_INTERVAL_SECONDS` | no | from `POLL_SECONDS` | Poll cadence override; jittered ±15% |
+| `CURL_IMPERSONATE` | no | `chrome` (newest) | `curl_cffi` impersonation profile, e.g. `chrome146` to pin one |
 | `DB_PATH` | no | `./samples.db` | SQLite history file for the 5h/7d windows |
+
+Two small state files live in `DB_PATH`'s directory: `session-cookie.json` (the
+rotated `sessionKey`, written 0600) and `org-id` (the discovery cache). Both are
+gitignored and safe to delete — the poller rebuilds them from the environment.
 
 ## Raspberry Pi 3 + PiTFT deployment
 

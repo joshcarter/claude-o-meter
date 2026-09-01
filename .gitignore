@@ -18,3 +18,8 @@ sample-prepaid-credits.json
 # Generated code-review output
 reviews/
 
+
+# Poller state: the rotated session cookie (a live credential) and the cached
+# org id. Written next to the sample DB (see DB_PATH).
+session-cookie.json
+org-id

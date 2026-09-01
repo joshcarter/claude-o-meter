@@ -4,8 +4,10 @@
 # For "live", set CLAUDE_SESSION_KEY as an environment variable (not here — it's a secret).
 DATA_SOURCE = "fake"
 
-# Poll cadence in seconds. For "live", bridged to POLL_INTERVAL_SECONDS for the poller.
-POLL_SECONDS = 60
+# Poll cadence in seconds. For "live", bridged to POLL_INTERVAL_SECONDS for the
+# poller, which jitters it ±15%. A 5-hour window does not need 60s resolution,
+# and an exact-metronome cadence is a needless bot signal — 180 is plenty.
+POLL_SECONDS = 180
 
 # UTC offset hours for the display clock (e.g. -7 for PDT). Used by the renderer (TD-3).
 UTC_OFFSET_HOURS = -6

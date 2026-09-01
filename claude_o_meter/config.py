@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 _DEFAULTS: dict = {
     "DATA_SOURCE": "fake",
-    "POLL_SECONDS": 60,
+    "POLL_SECONDS": 180,
     "UTC_OFFSET_HOURS": 0,
     "DISPLAY_MODE": "window",
     "DIM_OPACITY": 212,
